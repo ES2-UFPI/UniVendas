@@ -8,7 +8,27 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      perfis: {
+        Row: {
+          criado_em: string
+          eh_moderador: boolean
+          id: string
+          nome: string
+        }
+        Insert: {
+          criado_em?: string
+          eh_moderador?: boolean
+          id: string
+          nome?: string
+        }
+        Update: {
+          criado_em?: string
+          eh_moderador?: boolean
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
