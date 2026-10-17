@@ -4,16 +4,20 @@ import type { Database } from '../types/database.types'
 /**
  * Singleton que guarda o único cliente do Supabase do app.
  * Todo acesso ao banco, à autenticação e ao storage passa por aqui,
- * para não criar várias conexões nem espalhar as chaves pelo código.
+ * para não abrir várias conexões nem espalhar as chaves pelo código.
+ * Uso: SupabaseService.getInstance().client
  */
 export class SupabaseService {
-  private static client: SupabaseClient<Database> | null = null
+  private static instancia: SupabaseService | null = null
+  private readonly _client: SupabaseClient<Database>
 
-  // Construtor privado: ninguém faz `new SupabaseService()`; use SupabaseService.getClient().
-  private constructor() {}
+  // Construtor privado: ninguém faz `new SupabaseService()`; use getInstance().
+  private constructor(url: string, publishableKey: string) {
+    this._client = createClient<Database>(url, publishableKey)
+  }
 
-  static getClient(): SupabaseClient<Database> {
-    if (!SupabaseService.client) {
+  static getInstance(): SupabaseService {
+    if (!SupabaseService.instancia) {
       const url = import.meta.env.VITE_SUPABASE_URL
       const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
       if (!url || !key) {
@@ -21,8 +25,12 @@ export class SupabaseService {
           'Faltam VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY. Copie o .env.example para .env.local e preencha.',
         )
       }
-      SupabaseService.client = createClient<Database>(url, key)
+      SupabaseService.instancia = new SupabaseService(url, key)
     }
-    return SupabaseService.client
+    return SupabaseService.instancia
+  }
+
+  get client(): SupabaseClient<Database> {
+    return this._client
   }
 }
