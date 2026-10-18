@@ -1,0 +1,16 @@
+name: Manter o Supabase ativo
+
+on:
+  schedule:
+    - cron: '0 12 * * 1,4' # segundas e quintas, 12:00 UTC
+  workflow_dispatch:
+
+jobs:
+  consulta:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consulta simples ao banco
+        run: |
+          curl --fail --silent --show-error \
+            "${{ secrets.VITE_SUPABASE_URL }}/rest/v1/perfis?select=id&limit=1" \
+            -H "apikey: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}"
