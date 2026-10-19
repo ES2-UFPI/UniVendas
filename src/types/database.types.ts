@@ -8,6 +8,35 @@ export type Database = {
   }
   public: {
     Tables: {
+      contatos: {
+        Row: {
+          canal: string
+          id: string
+          valor: string
+          vendedor_id: string
+        }
+        Insert: {
+          canal: string
+          id?: string
+          valor: string
+          vendedor_id: string
+        }
+        Update: {
+          canal?: string
+          id?: string
+          valor?: string
+          vendedor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'contatos_vendedor_id_fkey'
+            columns: ['vendedor_id']
+            isOneToOne: false
+            referencedRelation: 'vendedores'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       perfis: {
         Row: {
           criado_em: string
@@ -28,6 +57,50 @@ export type Database = {
           nome?: string
         }
         Relationships: []
+      }
+      vendedores: {
+        Row: {
+          criado_em: string
+          descricao: string | null
+          foto_url: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          nome_exibicao: string
+          perfil_id: string
+          tipo: string
+        }
+        Insert: {
+          criado_em?: string
+          descricao?: string | null
+          foto_url?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          nome_exibicao: string
+          perfil_id: string
+          tipo?: string
+        }
+        Update: {
+          criado_em?: string
+          descricao?: string | null
+          foto_url?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          nome_exibicao?: string
+          perfil_id?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'vendedores_perfil_id_fkey'
+            columns: ['perfil_id']
+            isOneToOne: true
+            referencedRelation: 'perfis'
+            referencedColumns: ['id']
+          },
+        ]
       }
     }
     Views: {
