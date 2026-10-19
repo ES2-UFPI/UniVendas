@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ErroLocalizacao, LocalizacaoService } from './localizacaoService'
+import { Falha } from './falha'
+import { LocalizacaoService } from './localizacaoService'
 
 type ComSucesso = (posicao: GeolocationPosition) => void
 type ComErro = (erro: GeolocationPositionError) => void
@@ -34,7 +35,7 @@ describe('LocalizacaoService.posicaoAtual', () => {
   ])('traduz o código de erro %i para "%s"', async (code, codigo) => {
     simularErro(code)
     const falha = await new LocalizacaoService().posicaoAtual().catch((e) => e)
-    expect(falha).toBeInstanceOf(ErroLocalizacao)
+    expect(falha).toBeInstanceOf(Falha)
     expect(falha.codigo).toBe(codigo)
   })
 

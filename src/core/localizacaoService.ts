@@ -1,3 +1,5 @@
+import { Falha } from './falha'
+
 export interface LatLng {
   latitude: number
   longitude: number
@@ -14,15 +16,9 @@ const MENSAGENS: Record<CodigoErroLocalizacao, string> = {
   'nao-suportado': 'Este aparelho ou navegador não oferece localização.',
 }
 
-/** Erro padronizado do serviço: `codigo` para o código decidir, `message` para mostrar ao usuário. */
-export class ErroLocalizacao extends Error {
-  readonly codigo: CodigoErroLocalizacao
-
-  constructor(codigo: CodigoErroLocalizacao) {
-    super(MENSAGENS[codigo])
-    this.name = 'ErroLocalizacao'
-    this.codigo = codigo
-  }
+/** Cria a `Falha` padrão do app com a mensagem do código: `codigo` para decidir, `mensagem` para a tela. */
+function falha(codigo: CodigoErroLocalizacao): Falha {
+  return new Falha(MENSAGENS[codigo], codigo)
 }
 
 // Códigos de GeolocationPositionError
@@ -35,23 +31,23 @@ const OPCOES_PADRAO: PositionOptions = {
   maximumAge: 0,
 }
 
-function traduzirErro(erro: GeolocationPositionError): ErroLocalizacao {
-  if (erro.code === PERMISSAO_NEGADA) return new ErroLocalizacao('permissao-negada')
-  if (erro.code === TEMPO_ESGOTADO) return new ErroLocalizacao('tempo-esgotado')
-  return new ErroLocalizacao('indisponivel')
+function traduzirErro(erro: GeolocationPositionError): Falha {
+  if (erro.code === PERMISSAO_NEGADA) return falha('permissao-negada')
+  if (erro.code === TEMPO_ESGOTADO) return falha('tempo-esgotado')
+  return falha('indisponivel')
 }
 
 /**
  * Acesso à localização do aparelho (navigator.geolocation).
  * RN12: sem permissão, o botão "Estou no campus" não liga; quem usa o serviço
- * decide isso com `pedirPermissao()` e mostra `ErroLocalizacao.message`.
+ * decide isso com `pedirPermissao()` e mostra `Falha.mensagem`.
  */
 export class LocalizacaoService {
-  /** Lê a posição atual. Rejeita com ErroLocalizacao. */
+  /** Lê a posição atual. Rejeita com Falha. */
   posicaoAtual(opcoes?: PositionOptions): Promise<LatLng> {
     return new Promise((resolve, reject) => {
       if (typeof navigator === 'undefined' || !navigator.geolocation) {
-        reject(new ErroLocalizacao('nao-suportado'))
+        reject(falha('nao-suportado'))
         return
       }
       navigator.geolocation.getCurrentPosition(
@@ -72,7 +68,7 @@ export class LocalizacaoService {
       await this.posicaoAtual()
       return true
     } catch (erro) {
-      if (erro instanceof ErroLocalizacao) {
+      if (erro instanceof Falha) {
         return erro.codigo !== 'permissao-negada' && erro.codigo !== 'nao-suportado'
       }
       throw erro
