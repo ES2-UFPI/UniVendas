@@ -1,6 +1,9 @@
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { Falha } from '../../../core/falha'
 import { MapaPage } from './MapaPage'
+
+afterEach(cleanup)
 
 describe('MapaPage', () => {
   it('mostra o mapa com a atribuição do OpenStreetMap', () => {
@@ -24,5 +27,31 @@ describe('MapaPage', () => {
   it('não desenha marcadores quando ninguém está no campus', () => {
     const { container } = render(<MapaPage />)
     expect(container.querySelectorAll('.leaflet-marker-icon')).toHaveLength(0)
+  })
+})
+
+describe('MapaPage: botão Minha localização', () => {
+  it('pede a posição ao serviço de localização e não mostra erro', async () => {
+    const posicaoAtual = vi.fn().mockResolvedValue({ latitude: -5.0577, longitude: -42.7955 })
+    render(<MapaPage localizacao={{ posicaoAtual }} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Minha localização' }))
+
+    await waitFor(() => expect(posicaoAtual).toHaveBeenCalledOnce())
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Minha localização' })).toBeEnabled(),
+    )
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('mostra a mensagem do serviço quando a permissão é negada (RN12)', async () => {
+    const posicaoAtual = vi
+      .fn()
+      .mockRejectedValue(new Falha('Sem a permissão de localização…', 'permissao-negada'))
+    render(<MapaPage localizacao={{ posicaoAtual }} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Minha localização' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Sem a permissão de localização…')
   })
 })
