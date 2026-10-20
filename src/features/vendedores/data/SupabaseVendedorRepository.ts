@@ -40,11 +40,11 @@ export class SupabaseVendedorRepository implements VendedorRepository {
       ? this.client.storage.from(BUCKET_FOTOS).getPublicUrl(caminhoFoto).data.publicUrl
       : null
 
+    // Só as colunas do formulário: o banco só libera estas no insert, e o tipo fica 'ambulante' por padrão.
     const { data: linha, error } = await this.client
       .from('vendedores')
       .insert({
         perfil_id: vendedor.perfilId,
-        tipo: vendedor.tipo,
         nome_exibicao: vendedor.nomeExibicao,
         descricao: vendedor.descricao || null,
         foto_url: fotoUrl,

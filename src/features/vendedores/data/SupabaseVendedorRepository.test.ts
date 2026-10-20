@@ -62,7 +62,6 @@ describe('SupabaseVendedorRepository.criar', () => {
 
     expect(falso.insertVendedor).toHaveBeenCalledWith({
       perfil_id: 'u1',
-      tipo: 'ambulante',
       nome_exibicao: 'Brownies da Ana',
       descricao: 'Brownie e café',
       foto_url: null,
