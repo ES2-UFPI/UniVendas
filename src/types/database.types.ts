@@ -58,6 +58,44 @@ export type Database = {
         }
         Relationships: []
       }
+      presenca: {
+        Row: {
+          ativado_em: string
+          latitude: number
+          longitude: number
+          ponto_escolhido: boolean
+          referencia: string | null
+          ultimo_sinal_em: string
+          vendedor_id: string
+        }
+        Insert: {
+          ativado_em?: string
+          latitude: number
+          longitude: number
+          ponto_escolhido?: boolean
+          referencia?: string | null
+          ultimo_sinal_em?: string
+          vendedor_id: string
+        }
+        Update: {
+          ativado_em?: string
+          latitude?: number
+          longitude?: number
+          ponto_escolhido?: boolean
+          referencia?: string | null
+          ultimo_sinal_em?: string
+          vendedor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'presenca_vendedor_id_fkey'
+            columns: ['vendedor_id']
+            isOneToOne: true
+            referencedRelation: 'vendedores'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       vendedores: {
         Row: {
           criado_em: string
@@ -107,7 +145,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      no_perimetro_do_campus: {
+        Args: { lat: number; lng: number }
+        Returns: boolean
+      }
+      registrar_presenca: {
+        Args: {
+          lat_ponto?: number
+          lat_real: number
+          lng_ponto?: number
+          lng_real: number
+          referencia?: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
