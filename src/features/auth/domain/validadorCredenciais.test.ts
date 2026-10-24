@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { emailValido, senhaValida, validarCadastro } from './validadorCredenciais'
+import { emailValido, senhaValida, validarCadastro, validarLogin } from './validadorCredenciais'
 
 describe('emailValido', () => {
   it.each(['ana@ufpi.edu.br', 'joao.silva@gmail.com', '  ana@ufpi.edu.br  '])(
@@ -49,5 +49,22 @@ describe('validarCadastro', () => {
   it('recusa senha curta', () => {
     const erros = validarCadastro({ nome: 'Ana', email: 'ana@ufpi.edu.br', senha: '12345' })
     expect(erros).toEqual({ senha: 'A senha precisa ter 6 ou mais caracteres.' })
+  })
+})
+
+describe('validarLogin', () => {
+  it('sem erros quando e-mail e senha foram preenchidos', () => {
+    expect(validarLogin({ email: 'ana@ufpi.edu.br', senha: '1' })).toEqual({})
+  })
+
+  it('pede o e-mail e a senha quando estão vazios', () => {
+    expect(validarLogin({ email: '', senha: '' })).toEqual({
+      email: 'Informe seu e-mail.',
+      senha: 'Informe sua senha.',
+    })
+  })
+
+  it('recusa e-mail inválido', () => {
+    expect(validarLogin({ email: 'ana', senha: '123456' })).toHaveProperty('email')
   })
 })
