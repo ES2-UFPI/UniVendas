@@ -8,7 +8,7 @@ import { useAuthViewModel } from './useAuthViewModel'
 const ana = new Usuario('u1', 'Ana', 'ana@ufpi.edu.br')
 
 function repositorioFalso(cadastrar = vi.fn().mockResolvedValue(ana)) {
-  return { repositorio: { cadastrar } as AuthRepository, cadastrar }
+  return { repositorio: { cadastrar } as unknown as AuthRepository, cadastrar }
 }
 
 function preencher(result: { current: ReturnType<typeof useAuthViewModel> }, senha = '123456') {
