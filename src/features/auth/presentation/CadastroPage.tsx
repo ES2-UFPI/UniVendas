@@ -1,7 +1,8 @@
-import type { FormEvent, ReactNode } from 'react'
+import type { FormEvent } from 'react'
 import type { AuthRepository } from '../domain/AuthRepository'
 import type { Usuario } from '../domain/Usuario'
 import { TAMANHO_MINIMO_SENHA } from '../domain/validadorCredenciais'
+import { Campo, estiloCampo } from './Campo'
 import { useAuthViewModel } from './useAuthViewModel'
 
 interface CadastroPageProps {
@@ -9,38 +10,6 @@ interface CadastroPageProps {
   aoCadastrar?: (usuario: Usuario) => void
   /** Só para os testes: repositório falso. */
   repositorio?: AuthRepository
-}
-
-const estiloCampo =
-  'w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-600/30 aria-[invalid=true]:border-red-600'
-
-function Campo({
-  id,
-  rotulo,
-  erro,
-  dica,
-  children,
-}: {
-  id: string
-  rotulo: string
-  erro?: string
-  dica?: string
-  children: ReactNode
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium text-gray-800">
-        {rotulo}
-      </label>
-      {children}
-      {dica && !erro && <p className="text-xs text-gray-500">{dica}</p>}
-      {erro && (
-        <p id={`${id}-erro`} className="text-sm text-red-700">
-          {erro}
-        </p>
-      )}
-    </div>
-  )
 }
 
 /** Tela de cadastro (US01): cria a conta com nome, e-mail e senha e já entra no app (RN01). */
