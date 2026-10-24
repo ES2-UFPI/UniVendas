@@ -8,7 +8,7 @@ import { useAuthViewModel } from './useAuthViewModel'
 const ana = new Usuario('u1', 'Ana', 'ana@ufpi.edu.br')
 
 function repositorioFalso(cadastrar = vi.fn().mockResolvedValue(ana)) {
-  return { repositorio: { cadastrar } as AuthRepository, cadastrar }
+  return { repositorio: { cadastrar } as unknown as AuthRepository, cadastrar }
 }
 
 function preencher(result: { current: ReturnType<typeof useAuthViewModel> }, senha = '123456') {
@@ -97,5 +97,79 @@ describe('useAuthViewModel', () => {
     await act(() => result.current.cadastrar())
 
     expect(result.current.erro).toBe('Não foi possível criar a conta. Tente de novo.')
+  })
+})
+
+describe('useAuthViewModel.entrar e sair (US02)', () => {
+  function repositorioLogin(
+    entrar = vi.fn().mockResolvedValue(ana),
+    sair = vi.fn().mockResolvedValue(undefined),
+  ) {
+    return { repositorio: { entrar, sair } as unknown as AuthRepository, entrar, sair }
+  }
+
+  function preencherLogin(result: { current: ReturnType<typeof useAuthViewModel> }) {
+    act(() => {
+      result.current.alterar('email', 'ana@ufpi.edu.br')
+      result.current.alterar('senha', '123456')
+    })
+  }
+
+  it('não chama o repositório sem e-mail e senha', async () => {
+    const { repositorio, entrar } = repositorioLogin()
+    const { result } = renderHook(() => useAuthViewModel({ repositorio }))
+
+    await act(() => result.current.entrar())
+
+    expect(result.current.erros).toEqual({
+      email: 'Informe seu e-mail.',
+      senha: 'Informe sua senha.',
+    })
+    expect(entrar).not.toHaveBeenCalled()
+  })
+
+  it('entra sem pedir o nome e guarda o usuário', async () => {
+    const { repositorio, entrar } = repositorioLogin()
+    const { result } = renderHook(() => useAuthViewModel({ repositorio }))
+    preencherLogin(result)
+
+    let logado: Usuario | null = null
+    await act(async () => {
+      logado = await result.current.entrar()
+    })
+
+    expect(logado).toBe(ana)
+    expect(entrar).toHaveBeenCalledWith('ana@ufpi.edu.br', '123456')
+    expect(result.current.usuario).toBe(ana)
+  })
+
+  it('mostra a mensagem da Falha quando a senha está errada (RN04)', async () => {
+    const { repositorio } = repositorioLogin(
+      vi.fn().mockRejectedValue(new Falha('E-mail ou senha incorretos.', 'invalid_credentials')),
+    )
+    const { result } = renderHook(() => useAuthViewModel({ repositorio }))
+    preencherLogin(result)
+
+    await act(() => result.current.entrar())
+
+    expect(result.current.erro).toBe('E-mail ou senha incorretos.')
+    expect(result.current.usuario).toBeNull()
+  })
+
+  it('sai, limpa o usuário e os campos', async () => {
+    const { repositorio, sair } = repositorioLogin()
+    const { result } = renderHook(() => useAuthViewModel({ repositorio }))
+    preencherLogin(result)
+    await act(() => result.current.entrar())
+
+    let saiu = false
+    await act(async () => {
+      saiu = await result.current.sair()
+    })
+
+    expect(saiu).toBe(true)
+    expect(sair).toHaveBeenCalled()
+    expect(result.current.usuario).toBeNull()
+    expect(result.current.dados.senha).toBe('')
   })
 })

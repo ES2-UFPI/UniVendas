@@ -41,3 +41,22 @@ export function validarCadastro(dados: DadosCadastro): ErrosCadastro {
 
   return erros
 }
+
+/**
+ * Valida os dados do login (US02). Aqui não se cobra o tamanho mínimo da senha: quem decide se
+ * ela está certa é o servidor, e a mensagem de senha errada vem de lá (RN04).
+ */
+export function validarLogin(dados: Pick<DadosCadastro, 'email' | 'senha'>): ErrosCadastro {
+  const erros: ErrosCadastro = {}
+
+  if (dados.email.trim() === '') {
+    erros.email = 'Informe seu e-mail.'
+  } else if (!emailValido(dados.email)) {
+    erros.email = 'Digite um e-mail válido, por exemplo ana@ufpi.edu.br.'
+  }
+  if (dados.senha === '') {
+    erros.senha = 'Informe sua senha.'
+  }
+
+  return erros
+}
