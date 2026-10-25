@@ -1,9 +1,10 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import App, { AppRotas } from './App'
 import { useSessaoStore } from './core/sessaoStore'
 import { Usuario } from './features/auth/domain/Usuario'
+import type { PresencaRepository } from './features/presenca/domain/PresencaRepository'
 
 afterEach(() => {
   cleanup()
@@ -12,12 +13,19 @@ afterEach(() => {
 
 const ana = new Usuario('u1', 'Ana', 'ana@ufpi.edu.br')
 
+// Repositório de presença falso: o mapa não pode abrir canal no Supabase de verdade durante os testes.
+const presencaRepositorio = {
+  registrar: vi.fn(),
+  listarAtivos: vi.fn().mockResolvedValue([]),
+  observarAtivos: vi.fn(() => () => {}),
+} as PresencaRepository
+
 /** Abre o app no endereço `url`, com a sessão já definida. */
 function abrir(url: string, usuario: Usuario | null) {
   useSessaoStore.setState({ usuario, carregando: false })
   render(
     <MemoryRouter initialEntries={[url]}>
-      <AppRotas />
+      <AppRotas presencaRepositorio={presencaRepositorio} />
     </MemoryRouter>,
   )
 }
