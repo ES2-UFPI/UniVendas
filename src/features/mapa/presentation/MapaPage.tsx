@@ -4,16 +4,23 @@ import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png'
 import iconUrl from 'leaflet/dist/images/marker-icon.png'
 import shadowUrl from 'leaflet/dist/images/marker-shadow.png'
 import { useEffect, useState } from 'react'
-import { CircleMarker, MapContainer, Marker, TileLayer, useMap } from 'react-leaflet'
+import { CircleMarker, MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
 import { Falha } from '../../../core/falha'
 import { LocalizacaoService, type LatLng } from '../../../core/localizacaoService'
 import { CENTRO_DO_CAMPUS, ZOOM_INICIAL } from '../domain/campus'
 
-/** Ponto no mapa. Os marcadores vêm das presenças ativas (#72). */
+/**
+ * Vendedor ativo no mapa. A lista vem das presenças ativas (#72).
+ * Tocar no marcador mostra o nome e a referência (US06).
+ */
 export interface Marcador {
   id: string
   latitude: number
   longitude: number
+  /** Nome de exibição do vendedor (`vendedores.nome_exibicao`). */
+  nome: string
+  /** Referência opcional, ex.: "em frente ao RU" (`presenca.referencia`, RN18). */
+  referencia?: string | null
 }
 
 // No Vite os ícones padrão do Leaflet quebram; apontamos para as imagens importadas.
@@ -80,7 +87,12 @@ export function MapaPage({ marcadores = [], localizacao = servicoPadrao }: MapaP
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         />
         {marcadores.map((m) => (
-          <Marker key={m.id} position={[m.latitude, m.longitude]} icon={icone} />
+          <Marker key={m.id} position={[m.latitude, m.longitude]} icon={icone} title={m.nome}>
+            <Popup>
+              <p className="!m-0 font-semibold text-gray-900">{m.nome}</p>
+              {m.referencia && <p className="!m-0 mt-1 text-sm text-gray-600">{m.referencia}</p>}
+            </Popup>
+          </Marker>
         ))}
         {minhaPosicao && (
           <CircleMarker center={[minhaPosicao.latitude, minhaPosicao.longitude]} radius={10} />
