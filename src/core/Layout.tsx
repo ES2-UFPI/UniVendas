@@ -22,6 +22,9 @@ export function Layout() {
           <NavLink to={ROTAS.queroVender} className={estiloLink}>
             Quero vender
           </NavLink>
+          <NavLink to={ROTAS.painel} className={estiloLink}>
+            Painel
+          </NavLink>
         </nav>
         <div className="flex items-center gap-2">
           {usuario && <span className="text-sm text-gray-600">{usuario.nome}</span>}

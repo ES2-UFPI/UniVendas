@@ -74,6 +74,21 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Quero vender' })).toBeInTheDocument()
   })
 
+  it('protege também o painel do vendedor', () => {
+    abrir('/painel', null)
+    expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
+  })
+
+  it('o menu leva ao painel do vendedor, com o botão "Estou no campus" (US04)', () => {
+    abrir('/', ana)
+    expect(screen.getByRole('link', { name: 'Painel' })).toHaveAttribute('href', '/painel')
+    cleanup()
+
+    abrir('/painel', ana)
+    expect(screen.getByRole('heading', { name: 'Painel do vendedor' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Estou no campus' })).toBeInTheDocument()
+  })
+
   it('endereço desconhecido volta para o mapa', () => {
     abrir('/nao-existe', ana)
     expect(screen.getByLabelText('Mapa do campus')).toBeInTheDocument()

@@ -17,6 +17,7 @@ import { LoginPage } from './features/auth/presentation/LoginPage'
 import { MapaPage } from './features/mapa/presentation/MapaPage'
 import { useMapaViewModel } from './features/mapa/presentation/useMapaViewModel'
 import type { PresencaRepository } from './features/presenca/domain/PresencaRepository'
+import { PainelVendedorPage } from './features/presenca/presentation/PainelVendedorPage'
 import { QueroVenderPage } from './features/vendedores/presentation/QueroVenderPage'
 
 /** Topo simples das telas de login e cadastro, com um link para a outra tela. */
@@ -110,6 +111,10 @@ export function AppRotas({ presencaRepositorio }: AppRotasProps = {}) {
         <Route element={<Layout />}>
           <Route path={ROTAS.mapa} element={<Mapa presencaRepositorio={presencaRepositorio} />} />
           <Route path={ROTAS.queroVender} element={<QueroVender />} />
+          <Route
+            path={ROTAS.painel}
+            element={<PainelVendedorPage repositorio={presencaRepositorio} />}
+          />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to={ROTAS.mapa} replace />} />
