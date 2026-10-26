@@ -15,6 +15,8 @@ import { useSessaoStore } from './core/sessaoStore'
 import { CadastroPage } from './features/auth/presentation/CadastroPage'
 import { LoginPage } from './features/auth/presentation/LoginPage'
 import { MapaPage } from './features/mapa/presentation/MapaPage'
+import { useMapaViewModel } from './features/mapa/presentation/useMapaViewModel'
+import type { PresencaRepository } from './features/presenca/domain/PresencaRepository'
 import { QueroVenderPage } from './features/vendedores/presentation/QueroVenderPage'
 
 /** Topo simples das telas de login e cadastro, com um link para a outra tela. */
@@ -76,8 +78,28 @@ function QueroVender() {
   return <QueroVenderPage perfilId={usuario?.id ?? null} />
 }
 
+/** O mapa com os vendedores ativos, que aparecem e somem em tempo real (US06). */
+function Mapa({ presencaRepositorio }: { presencaRepositorio?: PresencaRepository }) {
+  const { marcadores, erro } = useMapaViewModel({ repositorio: presencaRepositorio })
+  return (
+    <>
+      {erro && (
+        <p role="alert" className="mb-2 w-full rounded-lg bg-red-50 p-3 text-sm text-red-800">
+          {erro}
+        </p>
+      )}
+      <MapaPage marcadores={marcadores} />
+    </>
+  )
+}
+
+interface AppRotasProps {
+  /** Só para os testes: repositório de presença falso (sem rede). */
+  presencaRepositorio?: PresencaRepository
+}
+
 /** As rotas do app, sem o roteador (os testes usam um `MemoryRouter` em volta). */
-export function AppRotas() {
+export function AppRotas({ presencaRepositorio }: AppRotasProps = {}) {
   return (
     <Routes>
       <Route element={<RotaSoVisitante />}>
@@ -86,7 +108,7 @@ export function AppRotas() {
       </Route>
       <Route element={<RotaProtegida />}>
         <Route element={<Layout />}>
-          <Route path={ROTAS.mapa} element={<MapaPage />} />
+          <Route path={ROTAS.mapa} element={<Mapa presencaRepositorio={presencaRepositorio} />} />
           <Route path={ROTAS.queroVender} element={<QueroVender />} />
         </Route>
       </Route>

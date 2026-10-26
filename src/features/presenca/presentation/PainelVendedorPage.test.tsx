@@ -14,7 +14,7 @@ function falsos(
   posicaoAtual = vi.fn().mockResolvedValue(posicao),
 ) {
   return {
-    repositorio: { registrar } as PresencaRepository,
+    repositorio: { registrar } as unknown as PresencaRepository,
     localizacao: { posicaoAtual } as Pick<LocalizacaoService, 'posicaoAtual'>,
     registrar,
   }
