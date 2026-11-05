@@ -145,6 +145,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      desligar_presenca: { Args: never; Returns: undefined }
       no_perimetro_do_campus: {
         Args: { lat: number; lng: number }
         Returns: boolean
