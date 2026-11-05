@@ -1,12 +1,3 @@
--- #108 [US05] Função desligar_presenca: o vendedor desliga o próprio status e a posição é apagada (RN17).
--- A registrar_presenca (migração 20261020120000) já aceita o ponto fixo (RN14), confere o perímetro com a
--- posição real e desliga quem saiu do campus (RN15); renova ultimo_sinal_em a cada sinal. Faltava só o desligar manual.
--- Como o app não escreve direto em presenca, o desligar também passa por uma função do banco.
-
--- Desliga a presença do vendedor logado. Desligar é apagar a linha, o que apaga a posição (RN17).
--- Não falha se ele já estava desligado (chamar duas vezes dá o mesmo resultado).
--- security definer: roda com o dono da função, porque o app não tem permissão de apagar em presenca.
--- search_path vazio obriga a escrever public.presenca, evitando que outra tabela com o mesmo nome seja usada.
 create function public.desligar_presenca()
 returns void
 language plpgsql
