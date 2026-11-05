@@ -1,9 +1,12 @@
 name: CI
 
+# Roda em todo PR para a dev (trabalho do dia a dia) ou para a main (release)
+# e em todo push nessas duas branches (o merge do PR).
 on:
   pull_request:
+    branches: [dev, main]
   push:
-    branches: [main]
+    branches: [dev, main]
 
 jobs:
   verificar:
