@@ -8,6 +8,35 @@ export type Database = {
   }
   public: {
     Tables: {
+      categorias: {
+        Row: {
+          categoria_pai_id: number | null
+          folha: boolean
+          id: number
+          nome: string
+        }
+        Insert: {
+          categoria_pai_id?: number | null
+          folha?: boolean
+          id?: never
+          nome: string
+        }
+        Update: {
+          categoria_pai_id?: number | null
+          folha?: boolean
+          id?: never
+          nome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'categorias_categoria_pai_id_fkey'
+            columns: ['categoria_pai_id']
+            isOneToOne: false
+            referencedRelation: 'categorias'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       contatos: {
         Row: {
           canal: string
@@ -30,6 +59,57 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: 'contatos_vendedor_id_fkey'
+            columns: ['vendedor_id']
+            isOneToOne: false
+            referencedRelation: 'vendedores'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      itens: {
+        Row: {
+          categoria_id: number
+          criado_em: string
+          descricao: string | null
+          disponivel: boolean
+          foto_url: string | null
+          id: string
+          nome: string
+          preco: number
+          vendedor_id: string
+        }
+        Insert: {
+          categoria_id: number
+          criado_em?: string
+          descricao?: string | null
+          disponivel?: boolean
+          foto_url?: string | null
+          id?: string
+          nome: string
+          preco: number
+          vendedor_id: string
+        }
+        Update: {
+          categoria_id?: number
+          criado_em?: string
+          descricao?: string | null
+          disponivel?: boolean
+          foto_url?: string | null
+          id?: string
+          nome?: string
+          preco?: number
+          vendedor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'itens_categoria_id_fkey'
+            columns: ['categoria_id']
+            isOneToOne: false
+            referencedRelation: 'categorias'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'itens_vendedor_id_fkey'
             columns: ['vendedor_id']
             isOneToOne: false
             referencedRelation: 'vendedores'
