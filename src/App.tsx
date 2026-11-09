@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import {
   BrowserRouter,
   Link,
@@ -14,23 +13,12 @@ import { ROTAS } from './core/routes'
 import { useSessaoStore } from './core/sessaoStore'
 import { CadastroPage } from './features/auth/presentation/CadastroPage'
 import { LoginPage } from './features/auth/presentation/LoginPage'
+import { TelaVisitante } from './features/auth/presentation/TelaVisitante'
 import { MapaPage } from './features/mapa/presentation/MapaPage'
 import { useMapaViewModel } from './features/mapa/presentation/useMapaViewModel'
 import type { PresencaRepository } from './features/presenca/domain/PresencaRepository'
 import { PainelVendedorPage } from './features/presenca/presentation/PainelVendedorPage'
 import { QueroVenderPage } from './features/vendedores/presentation/QueroVenderPage'
-
-/** Topo simples das telas de login e cadastro, com um link para a outra tela. */
-function TelaVisitante({ children, rodape }: { children: ReactNode; rodape: ReactNode }) {
-  return (
-    <main className="flex min-h-screen flex-col items-center bg-white p-4">
-      <h1 className="mt-6 text-3xl font-bold text-green-700">UniVendas</h1>
-      <p className="text-gray-600">Vendedores do campus, perto de você.</p>
-      {children}
-      <p className="text-sm text-gray-700">{rodape}</p>
-    </main>
-  )
-}
 
 function Login() {
   const navegar = useNavigate()
@@ -43,7 +31,10 @@ function Login() {
       rodape={
         <>
           Não tem conta?{' '}
-          <Link to={ROTAS.cadastro} className="font-semibold text-green-700 underline">
+          <Link
+            to={ROTAS.cadastro}
+            className="font-bold text-marca-700 underline underline-offset-2 hover:text-marca-800"
+          >
             Criar conta
           </Link>
         </>
@@ -62,7 +53,10 @@ function Cadastro() {
       rodape={
         <>
           Já tem conta?{' '}
-          <Link to={ROTAS.login} className="font-semibold text-green-700 underline">
+          <Link
+            to={ROTAS.login}
+            className="font-bold text-marca-700 underline underline-offset-2 hover:text-marca-800"
+          >
             Entrar
           </Link>
         </>

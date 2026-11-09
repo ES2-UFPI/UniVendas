@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import type { AuthRepository } from '../domain/AuthRepository'
 import type { Usuario } from '../domain/Usuario'
 import { BotaoSair } from './BotaoSair'
-import { Campo, estiloCampo } from './Campo'
+import { Campo, estiloBotao, estiloCampo, estiloInstrucao, estiloTitulo } from './Campo'
 import { useAuthViewModel } from './useAuthViewModel'
 
 interface LoginPageProps {
@@ -23,7 +23,7 @@ export function LoginPage({ aoEntrar, repositorio }: LoginPageProps) {
     return (
       <section className="mx-auto flex w-full max-w-md flex-col gap-4 p-4 text-center">
         <div role="status">
-          <h2 className="text-xl font-bold text-green-700">Olá, {logado.nome}!</h2>
+          <h2 className="text-xl font-bold text-marca-700">Olá, {logado.nome}!</h2>
           <p className="mt-2 text-gray-700">Você entrou na sua conta.</p>
         </div>
         <BotaoSair
@@ -49,11 +49,11 @@ export function LoginPage({ aoEntrar, repositorio }: LoginPageProps) {
   }
 
   return (
-    <section className="mx-auto w-full max-w-md p-4">
-      <h2 className="text-xl font-bold text-gray-900">Entrar</h2>
-      <p className="mt-1 text-sm text-gray-600">Use o e-mail e a senha da sua conta.</p>
+    <section className="w-full">
+      <h2 className={estiloTitulo}>Entrar</h2>
+      <p className={estiloInstrucao}>Use o e-mail e a senha da sua conta.</p>
 
-      <form onSubmit={enviar} noValidate className="mt-4 flex flex-col gap-4">
+      <form onSubmit={enviar} noValidate className="mt-10 flex flex-col gap-6">
         <Campo id="email" rotulo="E-mail" erro={erros.email}>
           <input
             id="email"
@@ -88,11 +88,7 @@ export function LoginPage({ aoEntrar, repositorio }: LoginPageProps) {
           </p>
         )}
 
-        <button
-          type="submit"
-          disabled={vm.carregando}
-          className="rounded-lg bg-green-600 px-4 py-3 font-semibold text-white hover:bg-green-700 disabled:opacity-60"
-        >
+        <button type="submit" disabled={vm.carregando} className={estiloBotao}>
           {vm.carregando ? 'Entrando…' : 'Entrar'}
         </button>
       </form>

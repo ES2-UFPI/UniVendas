@@ -1,1 +1,13 @@
 @import 'tailwindcss';
+
+/* Cores da marca, usadas como classes do Tailwind: bg-marca-700, text-tinta, border-borda... */
+@theme {
+  --color-marca-50: #d8f4d8;
+  --color-marca-500: #16a34a;
+  --color-marca-700: #15753a;
+  --color-marca-800: #135631;
+  --color-marca-900: #174c2c;
+  --color-tinta: #152b21;
+  --color-tinta-suave: #4c5b53;
+  --color-borda: #86968b;
+}
