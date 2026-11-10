@@ -31,6 +31,23 @@ Nome: `tipo/numero-da-issue-descricao-curta`, em minúsculas e com hífens.
 
 Mensagem curta no imperativo, com o tipo na frente: `feat: cria a tela de cadastro`, `fix: corrige validação da senha`.
 
+## Uso de IA
+
+Podemos usar ferramentas de IA (Claude Code, Copilot, ChatGPT etc.) para ajudar, mas **quem assina o commit e o pull request é o membro da equipe**, que precisa entender e saber defender o código. Por isso:
+
+- Nenhum commit pode ter a IA como autora nem a linha `Co-Authored-By:` de uma IA (por exemplo `Co-Authored-By: Claude ... <noreply@anthropic.com>`). Essa linha faz a ferramenta aparecer na lista de contribuidores do repositório.
+- A descrição do pull request não leva rodapé do tipo "Generated with Claude Code".
+- O arquivo `.claude/settings.json` do repositório já desliga essas linhas no Claude Code. Se usar outra ferramenta, desligue a coautoria nela.
+- O CI recusa o pull request que tiver um commit assim (passo "Commits sem IA como coautora").
+
+Se escapou, corrija na sua branch antes do merge:
+
+```bash
+git commit --amend                                        # só o último commit: apague a linha e salve
+git rebase -i origin/dev                                  # vários commits: marque "reword" em cada um
+git push --force-with-lease origin nome-da-sua-branch
+```
+
 ## Pull requests
 
 - **Base:** `dev`. O GitHub já sugere a `dev` porque ela é a branch padrão.
