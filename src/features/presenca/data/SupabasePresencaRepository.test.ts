@@ -105,3 +105,67 @@ describe('SupabasePresencaRepository.registrar', () => {
     expect(falha.codigo).toBe('resposta-inesperada')
   })
 })
+
+describe('SupabasePresencaRepository.enviarSinal', () => {
+  it('chama registrar_presenca com a posição, o ponto e a referência, para não apagá-los', async () => {
+    const { repo, rpc } = clienteFalso({ data: 'ok', error: null })
+
+    const resultado = await repo.enviarSinal(real, ponto, 'em frente ao RU')
+
+    expect(resultado).toBe(ResultadoRegistro.ATIVO)
+    expect(rpc).toHaveBeenCalledWith('registrar_presenca', {
+      lat_real: -5.0577,
+      lng_real: -42.7955,
+      lat_ponto: -5.058,
+      lng_ponto: -42.795,
+      referencia: 'em frente ao RU',
+    })
+  })
+
+  it('devolve FORA_DO_CAMPUS quando a posição saiu do campus', async () => {
+    const { repo } = clienteFalso({ data: 'fora_do_campus', error: null })
+
+    await expect(repo.enviarSinal(real, null, '')).resolves.toBe(ResultadoRegistro.FORA_DO_CAMPUS)
+  })
+
+  it('lança Falha quando o servidor recusa', async () => {
+    const { repo } = clienteFalso({
+      data: null,
+      error: { code: '42501', message: 'Só vendedores' },
+    })
+
+    const falha = await falhaDe(repo.enviarSinal(real, null, ''))
+
+    expect(falha.codigo).toBe('nao-e-vendedor')
+  })
+})
+
+describe('SupabasePresencaRepository.desligar', () => {
+  it('chama a função desligar_presenca, sem parâmetros', async () => {
+    const { repo, rpc } = clienteFalso({ data: null, error: null })
+
+    await expect(repo.desligar()).resolves.toBeUndefined()
+
+    expect(rpc).toHaveBeenCalledWith('desligar_presenca')
+  })
+
+  it('avisa quando quem chama não é vendedor', async () => {
+    const { repo } = clienteFalso({
+      data: null,
+      error: { code: '42501', message: 'Só vendedores' },
+    })
+
+    const falha = await falhaDe(repo.desligar())
+
+    expect(falha.codigo).toBe('nao-e-vendedor')
+  })
+
+  it('usa uma mensagem de desligar para erros desconhecidos', async () => {
+    const { repo } = clienteFalso({ data: null, error: { code: 'XX000', message: 'boom' } })
+
+    const falha = await falhaDe(repo.desligar())
+
+    expect(falha.codigo).toBe('XX000')
+    expect(falha.mensagem).toBe('Não foi possível desligar sua presença. Tente de novo.')
+  })
+})

@@ -16,6 +16,8 @@ const ana = new Usuario('u1', 'Ana', 'ana@ufpi.edu.br')
 // Repositório de presença falso: o mapa não pode abrir canal no Supabase de verdade durante os testes.
 const presencaRepositorio = {
   registrar: vi.fn(),
+  enviarSinal: vi.fn(),
+  desligar: vi.fn(),
   listarAtivos: vi.fn().mockResolvedValue([]),
   observarAtivos: vi.fn(() => () => {}),
 } as PresencaRepository

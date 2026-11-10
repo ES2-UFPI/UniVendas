@@ -11,11 +11,12 @@ import {
 } from '../domain/PresencaRepository'
 
 const MENSAGEM_PADRAO = 'Não foi possível ficar visível no mapa. Tente de novo.'
+const MENSAGEM_DESLIGAR = 'Não foi possível desligar sua presença. Tente de novo.'
 const MENSAGEM_LISTAR = 'Não foi possível carregar os vendedores do mapa. Tente de novo.'
 const NOME_PADRAO = 'Vendedor'
 
 /** Traduz os códigos de erro do PostgreSQL (da função `registrar_presenca`) para mensagens que o usuário entende. */
-function paraFalha(erro: { code?: string }): Falha {
+function paraFalha(erro: { code?: string }, mensagemPadrao = MENSAGEM_PADRAO): Falha {
   if (erro.code === '42501') {
     return new Falha(
       'Só vendedores podem ficar visíveis no mapa. Crie seu perfil de vendedor.',
@@ -28,7 +29,7 @@ function paraFalha(erro: { code?: string }): Falha {
       'dados-invalidos',
     )
   }
-  return new Falha(MENSAGEM_PADRAO, erro.code ?? 'desconhecido')
+  return new Falha(mensagemPadrao, erro.code ?? 'desconhecido')
 }
 
 /** Colunas de `presenca` e o nome do vendedor, que o balão do marcador mostra. */
@@ -76,6 +77,15 @@ export class SupabasePresencaRepository implements PresencaRepository {
       default:
         throw new Falha(MENSAGEM_PADRAO, 'resposta-inesperada')
     }
+  }
+
+  enviarSinal(real: LatLng, ponto: LatLng | null, referencia: string): Promise<ResultadoRegistro> {
+    return this.registrar(real, ponto, referencia)
+  }
+
+  async desligar(): Promise<void> {
+    const { error } = await this.client.rpc('desligar_presenca')
+    if (error) throw paraFalha(error, MENSAGEM_DESLIGAR)
   }
 
   async listarAtivos(): Promise<Presenca[]> {
