@@ -15,7 +15,8 @@ const EXTENSOES: Record<string, string> = {
   'image/webp': 'webp',
 }
 
-function paraItem(linha: ItemRow): Item {
+/** Converte a linha da tabela `itens` na entidade. Também usada pelo perfil do vendedor. */
+export function paraItem(linha: ItemRow): Item {
   return new Item(
     linha.id,
     linha.vendedor_id,
