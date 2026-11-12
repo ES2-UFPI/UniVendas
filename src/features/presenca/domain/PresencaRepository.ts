@@ -31,6 +31,8 @@ export interface PresencaRepository {
 
   desligar(): Promise<void>
 
+  minhaPresenca(): Promise<Presenca | null>
+
   /** Lista os vendedores ativos agora (com sinal há menos de 30 minutos). Lança `Falha` se não conseguir. */
   listarAtivos(): Promise<Presenca[]>
 

@@ -36,6 +36,30 @@ function paraFalha(erro: { code?: string }, mensagemPadrao = MENSAGEM_PADRAO): F
 const COLUNAS =
   'vendedor_id, latitude, longitude, ponto_escolhido, referencia, ultimo_sinal_em, vendedores(nome_exibicao)'
 
+const COLUNAS_DO_DONO =
+  'vendedor_id, latitude, longitude, ponto_escolhido, referencia, ultimo_sinal_em, vendedores!inner(nome_exibicao, perfil_id)'
+
+interface LinhaPresenca {
+  vendedor_id: string
+  latitude: number
+  longitude: number
+  ponto_escolhido: boolean
+  referencia: string | null
+  ultimo_sinal_em: string
+  vendedores: { nome_exibicao: string } | null
+}
+
+function paraPresenca(linha: LinhaPresenca): Presenca {
+  return new Presenca(
+    linha.vendedor_id,
+    linha.vendedores?.nome_exibicao ?? NOME_PADRAO,
+    { latitude: linha.latitude, longitude: linha.longitude },
+    linha.ponto_escolhido,
+    linha.referencia,
+    new Date(linha.ultimo_sinal_em),
+  )
+}
+
 export class SupabasePresencaRepository implements PresencaRepository {
   private readonly client: SupabaseClient<Database>
   private readonly agora: () => Date
@@ -94,19 +118,24 @@ export class SupabasePresencaRepository implements PresencaRepository {
     if (error) throw new Falha(MENSAGEM_LISTAR, error.code ?? 'desconhecido')
 
     const agora = this.agora()
-    return data
-      .map(
-        (linha) =>
-          new Presenca(
-            linha.vendedor_id,
-            linha.vendedores?.nome_exibicao ?? NOME_PADRAO,
-            { latitude: linha.latitude, longitude: linha.longitude },
-            linha.ponto_escolhido,
-            linha.referencia,
-            new Date(linha.ultimo_sinal_em),
-          ),
-      )
-      .filter((presenca) => presenca.estaAtiva(agora))
+    return data.map(paraPresenca).filter((presenca) => presenca.estaAtiva(agora))
+  }
+
+  async minhaPresenca(): Promise<Presenca | null> {
+    const { data: sessao } = await this.client.auth.getSession()
+    const perfilId = sessao.session?.user.id
+    if (!perfilId) return null
+
+    const { data, error } = await this.client
+      .from('presenca')
+      .select(COLUNAS_DO_DONO)
+      .eq('vendedores.perfil_id', perfilId)
+      .maybeSingle()
+    if (error) throw new Falha(MENSAGEM_LISTAR, error.code ?? 'desconhecido')
+    if (!data) return null
+
+    const presenca = paraPresenca(data)
+    return presenca.estaAtiva(this.agora()) ? presenca : null
   }
 
   observarAtivos(callback: (ativos: Presenca[]) => void): Unsubscribe {

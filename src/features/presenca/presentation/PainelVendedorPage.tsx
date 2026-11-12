@@ -3,13 +3,11 @@ import type { PresencaRepository } from '../domain/PresencaRepository'
 import { LIMITE_REFERENCIA, usePainelVendedorViewModel } from './usePainelVendedorViewModel'
 
 interface PainelVendedorPageProps {
-  /** Só para os testes: repositório falso. */
   repositorio?: PresencaRepository
-  /** Só para os testes: localização falsa. */
+
   localizacao?: Pick<LocalizacaoService, 'posicaoAtual'>
 }
 
-/** Painel do vendedor (US04): o botão "Estou no campus" e a referência opcional. */
 export function PainelVendedorPage({ repositorio, localizacao }: PainelVendedorPageProps) {
   const vm = usePainelVendedorViewModel({ repositorio, localizacao })
 
@@ -56,8 +54,18 @@ export function PainelVendedorPage({ repositorio, localizacao }: PainelVendedorP
         aria-pressed={vm.ativo}
         className="mt-4 w-full rounded-lg bg-green-600 px-4 py-3 font-semibold text-white hover:bg-green-700 disabled:opacity-60"
       >
-        {vm.carregando ? 'Ligando…' : 'Estou no campus'}
+        {vm.carregando && !vm.ativo ? 'Ligando…' : 'Estou no campus'}
       </button>
+      {vm.ativo && (
+        <button
+          type="button"
+          onClick={() => void vm.desligar()}
+          disabled={vm.carregando}
+          className="mt-2 w-full rounded-lg border border-red-600 px-4 py-3 font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+        >
+          {vm.carregando ? 'Desligando…' : 'Desligar'}
+        </button>
+      )}
     </section>
   )
 }
