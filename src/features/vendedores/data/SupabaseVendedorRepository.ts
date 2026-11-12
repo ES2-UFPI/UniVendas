@@ -71,6 +71,22 @@ export class SupabaseVendedorRepository implements VendedorRepository {
     return VendedorFactory.criar(linha)
   }
 
+  async buscarDoUsuario(perfilId: string): Promise<Vendedor | null> {
+    const { data, error } = await this.client
+      .from('vendedores')
+      .select('*')
+      .eq('perfil_id', perfilId)
+      .maybeSingle()
+
+    if (error) {
+      throw new Falha(
+        'Não foi possível carregar seu perfil de vendedor. Tente de novo.',
+        error.code ?? 'desconhecido',
+      )
+    }
+    return data ? VendedorFactory.criar(data) : null
+  }
+
   /** Envia a foto para a pasta do usuário no bucket (fotos/<perfilId>/...) e devolve o caminho. */
   private async enviarFoto(perfilId: string, foto: Blob): Promise<string> {
     const extensao = EXTENSOES[foto.type]
