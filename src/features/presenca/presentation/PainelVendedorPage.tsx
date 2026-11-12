@@ -3,11 +3,13 @@ import type { PresencaRepository } from '../domain/PresencaRepository'
 import { LIMITE_REFERENCIA, usePainelVendedorViewModel } from './usePainelVendedorViewModel'
 
 interface PainelVendedorPageProps {
+  /** Só para os testes: repositório falso. */
   repositorio?: PresencaRepository
-
+  /** Só para os testes: localização falsa. */
   localizacao?: Pick<LocalizacaoService, 'posicaoAtual'>
 }
 
+/** Painel do vendedor (US04): o botão "Estou no campus" e a referência opcional. */
 export function PainelVendedorPage({ repositorio, localizacao }: PainelVendedorPageProps) {
   const vm = usePainelVendedorViewModel({ repositorio, localizacao })
 
