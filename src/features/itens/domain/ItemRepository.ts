@@ -1,3 +1,4 @@
+import type { Categoria } from './Categoria'
 import type { Item } from './Item'
 
 /**
@@ -15,6 +16,9 @@ export interface ItemRepository {
   editar(item: Item): Promise<Item>
 
   remover(itemId: string): Promise<void>
+
+  /** A árvore de categorias, em ordem alfabética; o formulário só oferece as folhas (RN07). */
+  listarCategorias(): Promise<Categoria[]>
 
   /**
    * Envia a foto (já comprimida, RN10) para a pasta do dono no bucket e devolve a URL pública,

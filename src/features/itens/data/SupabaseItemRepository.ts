@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { Falha } from '../../../core/falha'
 import { SupabaseService } from '../../../core/supabaseService'
 import type { Database } from '../../../types/database.types'
+import type { Categoria } from '../domain/Categoria'
 import { Item } from '../domain/Item'
 import type { ItemRepository } from '../domain/ItemRepository'
 
@@ -120,6 +121,23 @@ export class SupabaseItemRepository implements ItemRepository {
       )
     }
     if (!data || data.length === 0) throw ITEM_NAO_ENCONTRADO
+  }
+
+  async listarCategorias(): Promise<Categoria[]> {
+    const { data, error } = await this.client.from('categorias').select('*').order('nome')
+
+    if (error || !data) {
+      throw new Falha(
+        'Não foi possível carregar as categorias. Tente de novo.',
+        error?.code ?? 'desconhecido',
+      )
+    }
+    return data.map((c) => ({
+      id: c.id,
+      nome: c.nome,
+      categoriaPaiId: c.categoria_pai_id,
+      folha: c.folha,
+    }))
   }
 
   async enviarFoto(perfilId: string, foto: Blob): Promise<string> {
