@@ -226,6 +226,7 @@ export type Database = {
     }
     Functions: {
       desligar_presenca: { Args: never; Returns: undefined }
+      desligar_presencas_sem_sinal: { Args: never; Returns: number }
       no_perimetro_do_campus: {
         Args: { lat: number; lng: number }
         Returns: boolean
