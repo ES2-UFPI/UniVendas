@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { Falha } from '../../../core/falha'
 import { Presenca } from '../../presenca/domain/Presenca'
 import type { PresencaRepository } from '../../presenca/domain/PresencaRepository'
+import { Contato } from '../../vendedores/domain/Contato'
 import { useMapaViewModel } from './useMapaViewModel'
 
 const agora = new Date('2026-10-24T12:00:00Z')
@@ -60,7 +61,35 @@ describe('useMapaViewModel', () => {
         longitude: -42.7955,
         nome: 'Brownies da Ana',
         referencia: 'em frente ao RU',
+        contatos: [],
       },
+    ])
+  })
+
+  it('entrega os botões de contato com o rótulo e o link prontos (US07)', async () => {
+    const comContatos = new Presenca(
+      'v1',
+      'Brownies da Ana',
+      { latitude: -5.0577, longitude: -42.7955 },
+      false,
+      null,
+      agora,
+      [new Contato('whatsapp', '5586999990000'), new Contato('telefone', '5586988880000')],
+    )
+    const { repositorio } = repositorioFalso(vi.fn().mockResolvedValue([comContatos]))
+    const { result } = renderHook(() => useMapaViewModel({ repositorio }))
+
+    await waitFor(() => expect(result.current.carregando).toBe(false))
+
+    expect(result.current.marcadores[0].contatos).toEqual([
+      {
+        canal: 'whatsapp',
+        rotulo: 'WhatsApp',
+        link:
+          'https://wa.me/5586999990000?text=' +
+          encodeURIComponent('Oi! Vi seu anúncio no UniVendas'),
+      },
+      { canal: 'telefone', rotulo: 'Ligar', link: 'tel:+5586988880000' },
     ])
   })
 

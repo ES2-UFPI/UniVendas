@@ -7,11 +7,12 @@ import { useEffect, useState } from 'react'
 import { CircleMarker, MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
 import { Falha } from '../../../core/falha'
 import { LocalizacaoService, type LatLng } from '../../../core/localizacaoService'
+import type { CanalTipo } from '../../vendedores/domain/Contato'
 import { CENTRO_DO_CAMPUS, ZOOM_INICIAL } from '../domain/campus'
 
 /**
  * Vendedor ativo no mapa. A lista vem das presenças ativas (#72).
- * Tocar no marcador mostra o nome e a referência (US06).
+ * Tocar no marcador mostra o nome, a referência (US06) e os botões de contato (US07).
  */
 export interface Marcador {
   id: string
@@ -21,6 +22,16 @@ export interface Marcador {
   nome: string
   /** Referência opcional, ex.: "em frente ao RU" (`presenca.referencia`, RN18). */
   referencia?: string | null
+  /** Botões de contato, com o link já montado pelo `ContatoService`. Sem contato, sem botão. */
+  contatos?: BotaoContato[]
+}
+
+export interface BotaoContato {
+  canal: CanalTipo
+  /** Texto do botão: "WhatsApp" ou "Ligar". */
+  rotulo: string
+  /** `https://wa.me/...` ou `tel:+55...`. */
+  link: string
 }
 
 // No Vite os ícones padrão do Leaflet quebram; apontamos para as imagens importadas.
@@ -91,6 +102,25 @@ export function MapaPage({ marcadores = [], localizacao = servicoPadrao }: MapaP
             <Popup>
               <p className="!m-0 font-semibold text-gray-900">{m.nome}</p>
               {m.referencia && <p className="!m-0 mt-1 text-sm text-gray-600">{m.referencia}</p>}
+              {m.contatos && m.contatos.length > 0 && (
+                <div className="mt-2 flex gap-2">
+                  {m.contatos.map((c) => (
+                    // O WhatsApp abre em outra aba; o tel: abre o discador do celular.
+                    <a
+                      key={c.canal}
+                      href={c.link}
+                      {...(c.canal === 'whatsapp'
+                        ? { target: '_blank', rel: 'noopener noreferrer' }
+                        : {})}
+                      className={`rounded-lg px-3 py-1 text-sm font-medium !text-white ${
+                        c.canal === 'whatsapp' ? 'bg-green-600' : 'bg-blue-600'
+                      }`}
+                    >
+                      {c.rotulo}
+                    </a>
+                  ))}
+                </div>
+              )}
             </Popup>
           </Marker>
         ))}
