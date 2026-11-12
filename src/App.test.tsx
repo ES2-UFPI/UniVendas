@@ -91,6 +91,20 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: 'Estou no campus' })).toBeInTheDocument()
   })
 
+  it('protege também a tela "Meus itens"', () => {
+    abrir('/meus-itens', null)
+    expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
+  })
+
+  it('o menu leva à tela "Meus itens" (US08)', () => {
+    abrir('/', ana)
+    expect(screen.getByRole('link', { name: 'Meus itens' })).toHaveAttribute('href', '/meus-itens')
+    cleanup()
+
+    abrir('/meus-itens', ana)
+    expect(screen.getByRole('heading', { name: 'Meus itens' })).toBeInTheDocument()
+  })
+
   it('endereço desconhecido volta para o mapa', () => {
     abrir('/nao-existe', ana)
     expect(screen.getByLabelText('Mapa do campus')).toBeInTheDocument()

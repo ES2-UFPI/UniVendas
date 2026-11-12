@@ -23,6 +23,13 @@ export function lerPreco(texto: string): number | null {
   return Number(limpo.replace(',', '.'))
 }
 
+const REAIS = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+
+/** Mostra o preço em reais. Ex.: 5.5 vira "R$ 5,50". */
+export function formatarPreco(valor: number): string {
+  return REAIS.format(valor)
+}
+
 /** Valida os dados do item (RN07). Sem erros, devolve um objeto vazio. */
 export function validarItem(dados: DadosItem, categorias: Categoria[]): ErrosItem {
   const erros: ErrosItem = {}

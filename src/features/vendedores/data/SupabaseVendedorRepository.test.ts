@@ -137,3 +137,38 @@ describe('SupabaseVendedorRepository.criar', () => {
     expect(falso.insertVendedor).not.toHaveBeenCalled()
   })
 })
+
+describe('SupabaseVendedorRepository.buscarDoUsuario', () => {
+  function clienteBusca(resposta: { data: unknown; error: unknown }) {
+    const maybeSingle = vi.fn(() => Promise.resolve(resposta))
+    const eq = vi.fn(() => ({ maybeSingle }))
+    const select = vi.fn(() => ({ eq }))
+    const client = { from: () => ({ select }) } as unknown as SupabaseClient<Database>
+    return { repo: new SupabaseVendedorRepository(client), eq }
+  }
+
+  it('devolve o vendedor da conta, criado pela fábrica', async () => {
+    const { repo, eq } = clienteBusca({ data: linhaSalva, error: null })
+
+    const vendedor = await repo.buscarDoUsuario('u1')
+
+    expect(eq).toHaveBeenCalledWith('perfil_id', 'u1')
+    expect(vendedor).toBeInstanceOf(VendedorAmbulante)
+    expect(vendedor?.id).toBe('v1')
+  })
+
+  it('devolve null quando a conta ainda não tem perfil de vendedor', async () => {
+    const { repo } = clienteBusca({ data: null, error: null })
+
+    await expect(repo.buscarDoUsuario('u1')).resolves.toBeNull()
+  })
+
+  it('lança Falha quando a busca dá erro', async () => {
+    const { repo } = clienteBusca({ data: null, error: { code: '500' } })
+
+    const erro = await repo.buscarDoUsuario('u1').catch((e) => e)
+
+    expect(erro).toBeInstanceOf(Falha)
+    expect(erro.mensagem).toBe('Não foi possível carregar seu perfil de vendedor. Tente de novo.')
+  })
+})

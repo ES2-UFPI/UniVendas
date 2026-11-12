@@ -13,6 +13,7 @@ import { ROTAS } from './core/routes'
 import { useSessaoStore } from './core/sessaoStore'
 import { CadastroPage } from './features/auth/presentation/CadastroPage'
 import { LoginPage } from './features/auth/presentation/LoginPage'
+import { MeusItensPage } from './features/itens/presentation/MeusItensPage'
 import { TelaVisitante } from './features/auth/presentation/TelaVisitante'
 import { MapaPage } from './features/mapa/presentation/MapaPage'
 import { useMapaViewModel } from './features/mapa/presentation/useMapaViewModel'
@@ -73,6 +74,11 @@ function QueroVender() {
   return <QueroVenderPage perfilId={usuario?.id ?? null} />
 }
 
+function MeusItens() {
+  const usuario = useSessaoStore((s) => s.usuario)
+  return <MeusItensPage perfilId={usuario?.id ?? null} />
+}
+
 /** O mapa com os vendedores ativos, que aparecem e somem em tempo real (US06). */
 function Mapa({ presencaRepositorio }: { presencaRepositorio?: PresencaRepository }) {
   const { marcadores, erro } = useMapaViewModel({ repositorio: presencaRepositorio })
@@ -109,6 +115,7 @@ export function AppRotas({ presencaRepositorio }: AppRotasProps = {}) {
             path={ROTAS.painel}
             element={<PainelVendedorPage repositorio={presencaRepositorio} />}
           />
+          <Route path={ROTAS.meusItens} element={<MeusItens />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to={ROTAS.mapa} replace />} />

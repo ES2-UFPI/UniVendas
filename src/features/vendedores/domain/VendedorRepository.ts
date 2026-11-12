@@ -3,7 +3,7 @@ import type { Vendedor } from './Vendedor'
 
 /**
  * Padrão Repository: o resto do app depende desta interface, não do Supabase.
- * Buscar, editar e o catálogo de itens entram nas tarefas das próximas histórias.
+ * Editar o perfil entra numa tarefa futura.
  */
 export interface VendedorRepository {
   /**
@@ -11,4 +11,7 @@ export interface VendedorRepository {
    * Lança `Falha` se não conseguir; nesse caso nada fica gravado pela metade.
    */
   criar(vendedor: Vendedor, contatos: Contato[], foto?: Blob): Promise<Vendedor>
+
+  /** O perfil de vendedor da conta `perfilId`, ou null se ela ainda não criou um. Lança `Falha` se não conseguir. */
+  buscarDoUsuario(perfilId: string): Promise<Vendedor | null>
 }
