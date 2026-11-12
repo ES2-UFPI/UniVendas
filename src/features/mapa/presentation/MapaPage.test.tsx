@@ -100,3 +100,58 @@ describe('MapaPage: balão do marcador (US06)', () => {
     expect(container.querySelectorAll('.leaflet-popup-content p')).toHaveLength(1)
   })
 })
+
+describe('MapaPage: botões de contato no balão (US07)', () => {
+  const linkWhatsApp =
+    'https://wa.me/5586999990000?text=Oi!%20Vi%20seu%20an%C3%BAncio%20no%20UniVendas'
+
+  it('mostra WhatsApp e Ligar com os links do vendedor', async () => {
+    render(
+      <MapaPage
+        marcadores={[
+          {
+            id: 'a',
+            latitude: -5.0577,
+            longitude: -42.7955,
+            nome: 'Brownies da Ana',
+            contatos: [
+              { canal: 'whatsapp', rotulo: 'WhatsApp', link: linkWhatsApp },
+              { canal: 'telefone', rotulo: 'Ligar', link: 'tel:+5586988880000' },
+            ],
+          },
+        ]}
+      />,
+    )
+
+    fireEvent.click(screen.getByTitle('Brownies da Ana'))
+
+    const whatsapp = await screen.findByRole('link', { name: 'WhatsApp' })
+    expect(whatsapp).toHaveAttribute('href', linkWhatsApp)
+    expect(whatsapp).toHaveAttribute('target', '_blank')
+    expect(screen.getByRole('link', { name: 'Ligar' })).toHaveAttribute(
+      'href',
+      'tel:+5586988880000',
+    )
+  })
+
+  it('esconde o botão do contato que o vendedor não cadastrou', async () => {
+    render(
+      <MapaPage
+        marcadores={[
+          {
+            id: 'a',
+            latitude: -5.0577,
+            longitude: -42.7955,
+            nome: 'Café do Leo',
+            contatos: [{ canal: 'telefone', rotulo: 'Ligar', link: 'tel:+5586988880000' }],
+          },
+        ]}
+      />,
+    )
+
+    fireEvent.click(screen.getByTitle('Café do Leo'))
+
+    expect(await screen.findByRole('link', { name: 'Ligar' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'WhatsApp' })).not.toBeInTheDocument()
+  })
+})
