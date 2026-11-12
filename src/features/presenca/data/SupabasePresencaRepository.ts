@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { LatLng } from '../../../core/localizacaoService'
 import { Falha } from '../../../core/falha'
 import { SupabaseService } from '../../../core/supabaseService'
+import { Contato, type CanalTipo } from '../../vendedores/domain/Contato'
 import type { Database } from '../../../types/database.types'
 import { Presenca } from '../domain/Presenca'
 import {
@@ -32,9 +33,18 @@ function paraFalha(erro: { code?: string }, mensagemPadrao = MENSAGEM_PADRAO): F
   return new Falha(mensagemPadrao, erro.code ?? 'desconhecido')
 }
 
-/** Colunas de `presenca` e o nome do vendedor, que o balão do marcador mostra. */
+/** Colunas de `presenca`, o nome e os contatos do vendedor, que o balão do marcador mostra. */
 const COLUNAS =
-  'vendedor_id, latitude, longitude, ponto_escolhido, referencia, ultimo_sinal_em, vendedores(nome_exibicao)'
+  'vendedor_id, latitude, longitude, ponto_escolhido, referencia, ultimo_sinal_em, vendedores(nome_exibicao, contatos(canal, valor))'
+
+const CANAIS: readonly string[] = ['whatsapp', 'telefone'] satisfies CanalTipo[]
+
+/** Converte as linhas de `contatos` em entidades, ignorando canal que o app ainda não conhece. */
+function paraContatos(linhas: { canal: string; valor: string }[] | undefined): Contato[] {
+  return (linhas ?? [])
+    .filter((c) => CANAIS.includes(c.canal))
+    .map((c) => new Contato(c.canal as CanalTipo, c.valor))
+}
 
 const COLUNAS_DO_DONO =
   'vendedor_id, latitude, longitude, ponto_escolhido, referencia, ultimo_sinal_em, vendedores!inner(nome_exibicao, perfil_id)'
@@ -46,7 +56,7 @@ interface LinhaPresenca {
   ponto_escolhido: boolean
   referencia: string | null
   ultimo_sinal_em: string
-  vendedores: { nome_exibicao: string } | null
+  vendedores: { nome_exibicao: string; contatos?: { canal: string; valor: string }[] } | null
 }
 
 function paraPresenca(linha: LinhaPresenca): Presenca {
@@ -57,6 +67,7 @@ function paraPresenca(linha: LinhaPresenca): Presenca {
     linha.ponto_escolhido,
     linha.referencia,
     new Date(linha.ultimo_sinal_em),
+    paraContatos(linha.vendedores?.contatos),
   )
 }
 
@@ -113,7 +124,7 @@ export class SupabasePresencaRepository implements PresencaRepository {
   }
 
   async listarAtivos(): Promise<Presenca[]> {
-    // O RLS só deixa ler quem está logado (RN04). A presença e o nome do vendedor vêm numa consulta só.
+    // O RLS só deixa ler quem está logado (RN04). A presença, o nome e os contatos vêm numa consulta só.
     const { data, error } = await this.client.from('presenca').select(COLUNAS)
     if (error) throw new Falha(MENSAGEM_LISTAR, error.code ?? 'desconhecido')
 

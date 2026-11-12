@@ -2,13 +2,20 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { describe, expect, it, vi } from 'vitest'
 import { Falha } from '../../../core/falha'
 import type { Database } from '../../../types/database.types'
+import { Contato } from '../../vendedores/domain/Contato'
 import { Presenca } from '../domain/Presenca'
 import { SupabasePresencaRepository } from './SupabasePresencaRepository'
 
 const agora = new Date('2026-10-24T12:00:00Z')
 const haMinutos = (minutos: number) => new Date(agora.getTime() - minutos * 60 * 1000).toISOString()
 
-function linha(id: string, nome: string | null, sinal: string, referencia: string | null = null) {
+function linha(
+  id: string,
+  nome: string | null,
+  sinal: string,
+  referencia: string | null = null,
+  contatos: { canal: string; valor: string }[] = [],
+) {
   return {
     vendedor_id: id,
     latitude: -5.0577,
@@ -16,7 +23,7 @@ function linha(id: string, nome: string | null, sinal: string, referencia: strin
     ponto_escolhido: false,
     referencia,
     ultimo_sinal_em: sinal,
-    vendedores: nome === null ? null : { nome_exibicao: nome },
+    vendedores: nome === null ? null : { nome_exibicao: nome, contatos },
   }
 }
 
@@ -58,7 +65,9 @@ describe('SupabasePresencaRepository.listarAtivos', () => {
     const ativos = await repo.listarAtivos()
 
     expect(client.from).toHaveBeenCalledWith('presenca')
-    expect(select).toHaveBeenCalledWith(expect.stringContaining('vendedores(nome_exibicao)'))
+    expect(select).toHaveBeenCalledWith(
+      expect.stringContaining('vendedores(nome_exibicao, contatos(canal, valor))'),
+    )
     expect(ativos).toHaveLength(1)
     expect(ativos[0]).toBeInstanceOf(Presenca)
     expect(ativos[0]).toMatchObject({
@@ -69,6 +78,30 @@ describe('SupabasePresencaRepository.listarAtivos', () => {
       referencia: 'em frente ao RU',
     })
     expect(ativos[0].ultimoSinalEm).toEqual(new Date(haMinutos(5)))
+  })
+
+  it('traz os contatos do vendedor e ignora canal que o app não conhece (US07)', async () => {
+    const { repo } = clienteFalso(
+      vi.fn().mockResolvedValue({
+        data: [
+          linha('v1', 'Brownies da Ana', haMinutos(5), null, [
+            { canal: 'whatsapp', valor: '5586999990000' },
+            { canal: 'telefone', valor: '5586988880000' },
+            { canal: 'instagram', valor: 'ana.brownies' },
+          ]),
+          linha('v2', 'Café do Leo', haMinutos(5)),
+        ],
+        error: null,
+      }),
+    )
+
+    const [ana, leo] = await repo.listarAtivos()
+
+    expect(ana.contatos).toEqual([
+      new Contato('whatsapp', '5586999990000'),
+      new Contato('telefone', '5586988880000'),
+    ])
+    expect(leo.contatos).toEqual([])
   })
 
   it('não devolve quem está há 30 minutos ou mais sem sinal (RN16)', async () => {
