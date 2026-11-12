@@ -2,7 +2,7 @@ import type { FormEvent } from 'react'
 import type { AuthRepository } from '../domain/AuthRepository'
 import type { Usuario } from '../domain/Usuario'
 import { TAMANHO_MINIMO_SENHA } from '../domain/validadorCredenciais'
-import { Campo, estiloCampo } from './Campo'
+import { Campo, estiloBotao, estiloCampo, estiloInstrucao, estiloTitulo } from './Campo'
 import { useAuthViewModel } from './useAuthViewModel'
 
 interface CadastroPageProps {
@@ -20,7 +20,7 @@ export function CadastroPage({ aoCadastrar, repositorio }: CadastroPageProps) {
   if (vm.usuario) {
     return (
       <section className="mx-auto w-full max-w-md p-4 text-center" role="status">
-        <h2 className="text-xl font-bold text-green-700">Bem-vindo, {vm.usuario.nome}!</h2>
+        <h2 className="text-xl font-bold text-marca-700">Bem-vindo, {vm.usuario.nome}!</h2>
         <p className="mt-2 text-gray-700">Sua conta foi criada e você já está dentro do app.</p>
       </section>
     )
@@ -34,14 +34,14 @@ export function CadastroPage({ aoCadastrar, repositorio }: CadastroPageProps) {
   }
 
   return (
-    <section className="mx-auto w-full max-w-md p-4">
-      <h2 className="text-xl font-bold text-gray-900">Criar conta</h2>
-      <p className="mt-1 text-sm text-gray-600">
+    <section className="w-full">
+      <h2 className={estiloTitulo}>Criar conta</h2>
+      <p className={estiloInstrucao}>
         Use qualquer e-mail. Toda conta já pode comprar, e você cria seu perfil de vendedor depois,
         se quiser.
       </p>
 
-      <form onSubmit={enviar} noValidate className="mt-4 flex flex-col gap-4">
+      <form onSubmit={enviar} noValidate className="mt-10 flex flex-col gap-6">
         <Campo id="nome" rotulo="Nome" erro={erros.nome}>
           <input
             id="nome"
@@ -93,11 +93,7 @@ export function CadastroPage({ aoCadastrar, repositorio }: CadastroPageProps) {
           </p>
         )}
 
-        <button
-          type="submit"
-          disabled={vm.carregando}
-          className="rounded-lg bg-green-600 px-4 py-3 font-semibold text-white hover:bg-green-700 disabled:opacity-60"
-        >
+        <button type="submit" disabled={vm.carregando} className={estiloBotao}>
           {vm.carregando ? 'Criando a conta…' : 'Criar conta'}
         </button>
       </form>
