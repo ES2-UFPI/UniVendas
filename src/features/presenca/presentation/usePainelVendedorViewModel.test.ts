@@ -1,21 +1,27 @@
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { Falha } from '../../../core/falha'
 import type { LocalizacaoService } from '../../../core/localizacaoService'
+import { Presenca } from '../domain/Presenca'
 import { ResultadoRegistro, type PresencaRepository } from '../domain/PresencaRepository'
 import { LIMITE_REFERENCIA, usePainelVendedorViewModel } from './usePainelVendedorViewModel'
 
 const posicao = { latitude: -5.0577, longitude: -42.7955 }
+const jaAtiva = new Presenca('v1', 'Ana', posicao, false, 'em frente ao RU', new Date())
 
 function falsos(
   registrar = vi.fn().mockResolvedValue(ResultadoRegistro.ATIVO),
   posicaoAtual = vi.fn().mockResolvedValue(posicao),
+  desligar = vi.fn().mockResolvedValue(undefined),
+  minhaPresenca = vi.fn().mockResolvedValue(null),
 ) {
   return {
-    repositorio: { registrar } as unknown as PresencaRepository,
+    repositorio: { registrar, desligar, minhaPresenca } as unknown as PresencaRepository,
     localizacao: { posicaoAtual } as Pick<LocalizacaoService, 'posicaoAtual'>,
     registrar,
     posicaoAtual,
+    desligar,
+    minhaPresenca,
   }
 }
 
@@ -139,5 +145,75 @@ describe('usePainelVendedorViewModel', () => {
 
     expect(registrar).toHaveBeenCalledTimes(1)
     expect(result.current.ativo).toBe(true)
+  })
+
+  it('desliga a presença e volta ao estado inicial', async () => {
+    const { repositorio, localizacao, desligar } = falsos()
+    const { result } = renderHook(() => usePainelVendedorViewModel({ repositorio, localizacao }))
+    act(() => result.current.alterarReferencia('em frente ao RU'))
+    await act(() => result.current.ligar())
+
+    let desligou = false
+    await act(async () => {
+      desligou = await result.current.desligar()
+    })
+
+    expect(desligou).toBe(true)
+    expect(desligar).toHaveBeenCalledTimes(1)
+    expect(result.current.ativo).toBe(false)
+    expect(result.current.referencia).toBe('')
+    expect(result.current.erro).toBeNull()
+    expect(result.current.carregando).toBe(false)
+  })
+
+  it('continua ativo e mostra a mensagem da Falha quando não consegue desligar', async () => {
+    const desligar = vi
+      .fn()
+      .mockRejectedValue(new Falha('Só vendedores podem ficar visíveis no mapa.', 'nao-e-vendedor'))
+    const { repositorio, localizacao } = falsos(undefined, undefined, desligar)
+    const { result } = renderHook(() => usePainelVendedorViewModel({ repositorio, localizacao }))
+    await act(() => result.current.ligar())
+
+    let desligou = true
+    await act(async () => {
+      desligou = await result.current.desligar()
+    })
+
+    expect(desligou).toBe(false)
+    expect(result.current.ativo).toBe(true)
+    expect(result.current.erro).toBe('Só vendedores podem ficar visíveis no mapa.')
+  })
+
+  it('mostra uma mensagem genérica quando desligar falha por erro inesperado', async () => {
+    const desligar = vi.fn().mockRejectedValue(new Error('rede caiu'))
+    const { repositorio, localizacao } = falsos(undefined, undefined, desligar)
+    const { result } = renderHook(() => usePainelVendedorViewModel({ repositorio, localizacao }))
+    await act(() => result.current.ligar())
+
+    await act(() => result.current.desligar())
+
+    expect(result.current.ativo).toBe(true)
+    expect(result.current.erro).toBe('Não foi possível desligar sua presença. Tente de novo.')
+  })
+
+  it('já abre ativo, com a referência, quando o vendedor está ativo no servidor', async () => {
+    const minhaPresenca = vi.fn().mockResolvedValue(jaAtiva)
+    const { repositorio, localizacao } = falsos(undefined, undefined, undefined, minhaPresenca)
+
+    const { result } = renderHook(() => usePainelVendedorViewModel({ repositorio, localizacao }))
+
+    await waitFor(() => expect(result.current.ativo).toBe(true))
+    expect(result.current.referencia).toBe('em frente ao RU')
+  })
+
+  it('continua desligado quando não consegue saber se está ativo', async () => {
+    const minhaPresenca = vi.fn().mockRejectedValue(new Error('rede caiu'))
+    const { repositorio, localizacao } = falsos(undefined, undefined, undefined, minhaPresenca)
+
+    const { result } = renderHook(() => usePainelVendedorViewModel({ repositorio, localizacao }))
+    await act(async () => {})
+
+    expect(result.current.ativo).toBe(false)
+    expect(result.current.erro).toBeNull()
   })
 })

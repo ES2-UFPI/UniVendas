@@ -18,6 +18,7 @@ const presencaRepositorio = {
   registrar: vi.fn(),
   enviarSinal: vi.fn(),
   desligar: vi.fn(),
+  minhaPresenca: vi.fn().mockResolvedValue(null),
   listarAtivos: vi.fn().mockResolvedValue([]),
   observarAtivos: vi.fn(() => () => {}),
 } as PresencaRepository
