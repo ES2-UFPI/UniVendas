@@ -18,7 +18,11 @@ function falsos({
 } = {}) {
   return {
     vendedores: { buscarDoUsuario: doUsuario } as unknown as VendedorRepository,
-    repositorio: { listar, remover } as unknown as ItemRepository,
+    repositorio: {
+      listar,
+      remover,
+      listarCategorias: vi.fn().mockResolvedValue([]),
+    } as unknown as ItemRepository,
     doUsuario,
     listar,
     remover,
