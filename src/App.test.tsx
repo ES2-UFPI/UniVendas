@@ -5,6 +5,10 @@ import App, { AppRotas } from './App'
 import { useSessaoStore } from './core/sessaoStore'
 import { Usuario } from './features/auth/domain/Usuario'
 import type { PresencaRepository } from './features/presenca/domain/PresencaRepository'
+import { PerfilVendedor } from './features/vendedores/domain/PerfilVendedor'
+import { VendedorAmbulante } from './features/vendedores/domain/Vendedor'
+import type { VendedorRepository } from './features/vendedores/domain/VendedorRepository'
+import { rotaPerfilVendedor } from './core/routes'
 
 afterEach(() => {
   cleanup()
@@ -22,12 +26,25 @@ const presencaRepositorio = {
   observarAtivos: vi.fn(() => () => {}),
 } as PresencaRepository
 
+// Repositório de vendedores falso: o perfil não pode buscar no Supabase de verdade.
+const vendedorRepositorio = {
+  criar: vi.fn(),
+  buscarPerfil: vi.fn((id: string) =>
+    Promise.resolve(
+      new PerfilVendedor(new VendedorAmbulante(id, 'u2', 'Brownies da Ana'), [], [], false),
+    ),
+  ),
+} as VendedorRepository
+
 /** Abre o app no endereço `url`, com a sessão já definida. */
 function abrir(url: string, usuario: Usuario | null) {
   useSessaoStore.setState({ usuario, carregando: false })
   render(
     <MemoryRouter initialEntries={[url]}>
-      <AppRotas presencaRepositorio={presencaRepositorio} />
+      <AppRotas
+        presencaRepositorio={presencaRepositorio}
+        vendedorRepositorio={vendedorRepositorio}
+      />
     </MemoryRouter>,
   )
 }
@@ -89,6 +106,20 @@ describe('App', () => {
     abrir('/painel', ana)
     expect(screen.getByRole('heading', { name: 'Painel do vendedor' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Estou no campus' })).toBeInTheDocument()
+  })
+
+  it('abre o perfil do vendedor pela rota /vendedor/:id (US10)', async () => {
+    expect(rotaPerfilVendedor('v1')).toBe('/vendedor/v1')
+    abrir(rotaPerfilVendedor('v1'), ana)
+
+    expect(await screen.findByRole('heading', { name: 'Brownies da Ana' })).toBeInTheDocument()
+    expect(vendedorRepositorio.buscarPerfil).toHaveBeenCalledWith('v1')
+    expect(screen.getByText('Fora do campus agora')).toBeInTheDocument()
+  })
+
+  it('protege também o perfil do vendedor', () => {
+    abrir('/vendedor/v1', null)
+    expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
   })
 
   it('endereço desconhecido volta para o mapa', () => {

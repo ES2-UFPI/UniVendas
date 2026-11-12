@@ -5,4 +5,10 @@ export const ROTAS = {
   cadastro: '/cadastro',
   queroVender: '/quero-vender',
   painel: '/painel',
+  perfilVendedor: '/vendedor/:id',
 } as const
+
+/** Endereço do perfil de um vendedor, ex.: `/vendedor/123` (US10). */
+export function rotaPerfilVendedor(id: string): string {
+  return ROTAS.perfilVendedor.replace(':id', encodeURIComponent(id))
+}
