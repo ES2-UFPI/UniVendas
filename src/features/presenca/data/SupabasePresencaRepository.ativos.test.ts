@@ -230,3 +230,65 @@ describe('SupabasePresencaRepository.observarAtivos (Observer)', () => {
     expect(new Set(nomes).size).toBe(2)
   })
 })
+
+describe('SupabasePresencaRepository.minhaPresenca', () => {
+  function clienteDoVendedor(
+    resposta: Resposta,
+    sessao: { user: { id: string } } | null = { user: { id: 'perfil-1' } },
+  ) {
+    const maybeSingle = vi.fn().mockResolvedValue(resposta)
+    const eq = vi.fn(() => ({ maybeSingle }))
+    const select = vi.fn(() => ({ eq }))
+    const client = {
+      auth: { getSession: vi.fn().mockResolvedValue({ data: { session: sessao } }) },
+      from: vi.fn(() => ({ select })),
+    }
+    const repo = new SupabasePresencaRepository(
+      client as unknown as SupabaseClient<Database>,
+      () => agora,
+    )
+    return { repo, client, eq }
+  }
+
+  it('devolve a presença do vendedor logado, filtrando pelo perfil da sessão', async () => {
+    const { repo, client, eq } = clienteDoVendedor({
+      data: linha('v1', 'Ana', haMinutos(2), 'em frente ao RU'),
+      error: null,
+    })
+
+    const presenca = await repo.minhaPresenca()
+
+    expect(client.from).toHaveBeenCalledWith('presenca')
+    expect(eq).toHaveBeenCalledWith('vendedores.perfil_id', 'perfil-1')
+    expect(presenca).toBeInstanceOf(Presenca)
+    expect(presenca?.referencia).toBe('em frente ao RU')
+  })
+
+  it('devolve null quando o vendedor não está ativo', async () => {
+    const { repo } = clienteDoVendedor({ data: null, error: null })
+
+    await expect(repo.minhaPresenca()).resolves.toBeNull()
+  })
+
+  it('devolve null quando o último sinal tem mais de 30 minutos', async () => {
+    const { repo } = clienteDoVendedor({ data: linha('v1', 'Ana', haMinutos(31)), error: null })
+
+    await expect(repo.minhaPresenca()).resolves.toBeNull()
+  })
+
+  it('devolve null, sem consultar o banco, quando não há sessão', async () => {
+    const { repo, client } = clienteDoVendedor({ data: null, error: null }, null)
+
+    await expect(repo.minhaPresenca()).resolves.toBeNull()
+    expect(client.from).not.toHaveBeenCalled()
+  })
+
+  it('lança Falha quando a leitura falha', async () => {
+    const { repo } = clienteDoVendedor({ data: null, error: { code: 'XX000', message: 'boom' } })
+
+    const erro = await repo.minhaPresenca().catch((e) => e)
+
+    expect(erro).toBeInstanceOf(Falha)
+    expect(erro.codigo).toBe('XX000')
+  })
+})

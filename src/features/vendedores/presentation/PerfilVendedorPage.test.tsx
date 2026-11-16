@@ -22,7 +22,11 @@ function perfil(ativoAgora: boolean, contatos = [new Contato('whatsapp', '558699
 }
 
 function repositorio(buscarPerfil: VendedorRepository['buscarPerfil']) {
-  return { criar: vi.fn(), buscarPerfil: vi.fn(buscarPerfil) } as VendedorRepository
+  return {
+    criar: vi.fn(),
+    buscarDoUsuario: vi.fn(),
+    buscarPerfil: vi.fn(buscarPerfil),
+  } as VendedorRepository
 }
 
 describe('PerfilVendedorPage (US10)', () => {

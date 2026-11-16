@@ -223,3 +223,32 @@ describe('SupabaseItemRepository.enviarFoto', () => {
     expect(falha.codigo).toBe('foto-nao-enviada')
   })
 })
+
+describe('SupabaseItemRepository.listarCategorias', () => {
+  it('busca a árvore de categorias em ordem alfabética', async () => {
+    const { repo, consulta, from } = clienteFalso({
+      data: [
+        { id: 3, nome: 'Doces', categoria_pai_id: 1, folha: false },
+        { id: 7, nome: 'Brownie', categoria_pai_id: 3, folha: true },
+      ],
+      error: null,
+    })
+
+    const categorias = await repo.listarCategorias()
+
+    expect(from).toHaveBeenCalledWith('categorias')
+    expect(consulta.order).toHaveBeenCalledWith('nome')
+    expect(categorias).toEqual([
+      { id: 3, nome: 'Doces', categoriaPaiId: 1, folha: false },
+      { id: 7, nome: 'Brownie', categoriaPaiId: 3, folha: true },
+    ])
+  })
+
+  it('lança Falha quando a busca dá erro', async () => {
+    const { repo } = clienteFalso({ data: null, error: { code: '500' } })
+
+    const falha = await falhaDe(repo.listarCategorias())
+
+    expect(falha.mensagem).toBe('Não foi possível carregar as categorias. Tente de novo.')
+  })
+})
