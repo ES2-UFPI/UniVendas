@@ -2,12 +2,20 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { Falha } from '../../../core/falha'
 import { SupabaseService } from '../../../core/supabaseService'
 import type { Database } from '../../../types/database.types'
-import type { Contato } from '../domain/Contato'
+import { paraItem } from '../../itens/data/SupabaseItemRepository'
+import { LIMITE_SEM_SINAL_MS } from '../../presenca/domain/Presenca'
+import { Contato, type CanalTipo } from '../domain/Contato'
+import { PerfilVendedor } from '../domain/PerfilVendedor'
 import type { Vendedor } from '../domain/Vendedor'
 import { VendedorFactory } from '../domain/VendedorFactory'
 import type { VendedorRepository } from '../domain/VendedorRepository'
 
 const BUCKET_FOTOS = 'fotos'
+
+/** O vendedor, os contatos, os itens e a presença, numa consulta só. */
+const COLUNAS_PERFIL = '*, contatos(canal, valor), itens(*), presenca(ultimo_sinal_em)'
+
+const CANAIS: readonly string[] = ['whatsapp', 'telefone'] satisfies CanalTipo[]
 
 const EXTENSOES: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -28,10 +36,47 @@ function paraFalha(erro: { code?: string }): Falha {
 
 export class SupabaseVendedorRepository implements VendedorRepository {
   private readonly client: SupabaseClient<Database>
+  private readonly agora: () => Date
 
-  // O cliente pode ser passado de fora para os testes; no app, usa o do Singleton.
-  constructor(client: SupabaseClient<Database> = SupabaseService.getInstance().client) {
+  // O cliente e o relógio podem ser passados de fora para os testes; no app, usa o do Singleton e a hora real.
+  constructor(
+    client: SupabaseClient<Database> = SupabaseService.getInstance().client,
+    agora: () => Date = () => new Date(),
+  ) {
     this.client = client
+    this.agora = agora
+  }
+
+  async buscarPerfil(id: string): Promise<PerfilVendedor | null> {
+    // O RLS só deixa ler quem está logado (RN04). maybeSingle: sem linha vira null, não erro.
+    const { data: linha, error } = await this.client
+      .from('vendedores')
+      .select(COLUNAS_PERFIL)
+      .eq('id', id)
+      .maybeSingle()
+
+    if (error) {
+      throw new Falha(
+        'Não foi possível carregar o perfil. Tente de novo.',
+        error.code ?? 'desconhecido',
+      )
+    }
+    if (!linha) return null
+
+    const { contatos, itens, presenca, ...dadosVendedor } = linha
+    // Mesma regra do mapa: ativo é quem mandou sinal há menos de 30 minutos (RN16).
+    const ativoAgora =
+      presenca !== null &&
+      this.agora().getTime() - new Date(presenca.ultimo_sinal_em).getTime() < LIMITE_SEM_SINAL_MS
+
+    return new PerfilVendedor(
+      VendedorFactory.criar(dadosVendedor),
+      contatos
+        .filter((c) => CANAIS.includes(c.canal))
+        .map((c) => new Contato(c.canal as CanalTipo, c.valor)),
+      itens.map(paraItem),
+      ativoAgora,
+    )
   }
 
   async criar(vendedor: Vendedor, contatos: Contato[], foto?: Blob): Promise<Vendedor> {

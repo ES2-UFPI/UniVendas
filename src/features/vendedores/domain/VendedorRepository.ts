@@ -1,4 +1,5 @@
 import type { Contato } from './Contato'
+import type { PerfilVendedor } from './PerfilVendedor'
 import type { Vendedor } from './Vendedor'
 
 /**
@@ -11,6 +12,12 @@ export interface VendedorRepository {
    * Lança `Falha` se não conseguir; nesse caso nada fica gravado pela metade.
    */
   criar(vendedor: Vendedor, contatos: Contato[], foto?: Blob): Promise<Vendedor>
+
+  /**
+   * Busca o perfil público do vendedor `id`: dados, contatos, itens e se está ativo agora (US10).
+   * Devolve `null` se o vendedor não existe. Lança `Falha` se não conseguir buscar.
+   */
+  buscarPerfil(id: string): Promise<PerfilVendedor | null>
 
   /** O perfil de vendedor da conta `perfilId`, ou null se ela ainda não criou um. Lança `Falha` se não conseguir. */
   buscarDoUsuario(perfilId: string): Promise<Vendedor | null>
