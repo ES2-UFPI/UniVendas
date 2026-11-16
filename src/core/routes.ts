@@ -5,4 +5,5 @@ export const ROTAS = {
   cadastro: '/cadastro',
   queroVender: '/quero-vender',
   painel: '/painel',
+  meusItens: '/meus-itens',
 } as const

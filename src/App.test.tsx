@@ -18,6 +18,7 @@ const presencaRepositorio = {
   registrar: vi.fn(),
   enviarSinal: vi.fn(),
   desligar: vi.fn(),
+  minhaPresenca: vi.fn().mockResolvedValue(null),
   listarAtivos: vi.fn().mockResolvedValue([]),
   observarAtivos: vi.fn(() => () => {}),
 } as PresencaRepository
@@ -89,6 +90,20 @@ describe('App', () => {
     abrir('/painel', ana)
     expect(screen.getByRole('heading', { name: 'Painel do vendedor' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Estou no campus' })).toBeInTheDocument()
+  })
+
+  it('protege também a tela "Meus itens"', () => {
+    abrir('/meus-itens', null)
+    expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
+  })
+
+  it('o menu leva à tela "Meus itens" (US08)', () => {
+    abrir('/', ana)
+    expect(screen.getByRole('link', { name: 'Meus itens' })).toHaveAttribute('href', '/meus-itens')
+    cleanup()
+
+    abrir('/meus-itens', ana)
+    expect(screen.getByRole('heading', { name: 'Meus itens' })).toBeInTheDocument()
   })
 
   it('endereço desconhecido volta para o mapa', () => {

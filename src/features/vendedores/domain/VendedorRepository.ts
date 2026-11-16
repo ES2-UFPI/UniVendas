@@ -4,7 +4,7 @@ import type { Vendedor } from './Vendedor'
 
 /**
  * Padrão Repository: o resto do app depende desta interface, não do Supabase.
- * Editar o perfil entra numa história futura.
+ * Editar o perfil entra numa tarefa futura.
  */
 export interface VendedorRepository {
   /**
@@ -18,4 +18,7 @@ export interface VendedorRepository {
    * Devolve `null` se o vendedor não existe. Lança `Falha` se não conseguir buscar.
    */
   buscarPerfil(id: string): Promise<PerfilVendedor | null>
+
+  /** O perfil de vendedor da conta `perfilId`, ou null se ela ainda não criou um. Lança `Falha` se não conseguir. */
+  buscarDoUsuario(perfilId: string): Promise<Vendedor | null>
 }
