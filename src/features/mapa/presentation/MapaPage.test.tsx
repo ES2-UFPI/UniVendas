@@ -1,9 +1,16 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render as renderizar, screen, waitFor } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Falha } from '../../../core/falha'
 import { MapaPage } from './MapaPage'
 
 afterEach(cleanup)
+
+// O link "Ver perfil" usa o roteador, então a tela precisa de um em volta nos testes.
+function render(tela: ReactElement) {
+  return renderizar(<MemoryRouter>{tela}</MemoryRouter>)
+}
 
 describe('MapaPage', () => {
   it('mostra o mapa com a atribuição do OpenStreetMap', () => {
@@ -153,5 +160,25 @@ describe('MapaPage: botões de contato no balão (US07)', () => {
 
     expect(await screen.findByRole('link', { name: 'Ligar' })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'WhatsApp' })).not.toBeInTheDocument()
+  })
+})
+
+describe('MapaPage: link para o perfil (US10)', () => {
+  it('o balão tem o link "Ver perfil" para o vendedor certo', async () => {
+    render(
+      <MapaPage
+        marcadores={[
+          { id: 'v1', latitude: -5.0577, longitude: -42.7955, nome: 'Brownies da Ana' },
+          { id: 'v2', latitude: -5.058, longitude: -42.796, nome: 'Café do Leo' },
+        ]}
+      />,
+    )
+
+    fireEvent.click(screen.getByTitle('Café do Leo'))
+
+    expect(await screen.findByRole('link', { name: 'Ver perfil' })).toHaveAttribute(
+      'href',
+      '/vendedor/v2',
+    )
   })
 })

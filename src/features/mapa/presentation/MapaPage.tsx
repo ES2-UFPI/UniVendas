@@ -5,14 +5,17 @@ import iconUrl from 'leaflet/dist/images/marker-icon.png'
 import shadowUrl from 'leaflet/dist/images/marker-shadow.png'
 import { useEffect, useState } from 'react'
 import { CircleMarker, MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
+import { Link } from 'react-router-dom'
 import { Falha } from '../../../core/falha'
 import { LocalizacaoService, type LatLng } from '../../../core/localizacaoService'
+import { rotaPerfilVendedor } from '../../../core/routes'
 import type { CanalTipo } from '../../vendedores/domain/Contato'
 import { CENTRO_DO_CAMPUS, ZOOM_INICIAL } from '../domain/campus'
 
 /**
  * Vendedor ativo no mapa. A lista vem das presenças ativas (#72).
- * Tocar no marcador mostra o nome, a referência (US06) e os botões de contato (US07).
+ * Tocar no marcador mostra o nome, a referência (US06), os botões de contato (US07)
+ * e o link para o perfil do vendedor (US10).
  */
 export interface Marcador {
   id: string
@@ -121,6 +124,13 @@ export function MapaPage({ marcadores = [], localizacao = servicoPadrao }: MapaP
                   ))}
                 </div>
               )}
+              {/* Link do roteador: abre o perfil sem recarregar a página. O id do marcador é o do vendedor. */}
+              <Link
+                to={rotaPerfilVendedor(m.id)}
+                className="mt-2 block text-sm font-medium !text-green-700 underline"
+              >
+                Ver perfil
+              </Link>
             </Popup>
           </Marker>
         ))}
