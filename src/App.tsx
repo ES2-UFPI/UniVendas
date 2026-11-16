@@ -6,6 +6,7 @@ import {
   Routes,
   useLocation,
   useNavigate,
+  useParams,
 } from 'react-router-dom'
 import { Layout } from './core/Layout'
 import { RotaProtegida, RotaSoVisitante } from './core/RotaProtegida'
@@ -19,6 +20,8 @@ import { MapaPage } from './features/mapa/presentation/MapaPage'
 import { useMapaViewModel } from './features/mapa/presentation/useMapaViewModel'
 import type { PresencaRepository } from './features/presenca/domain/PresencaRepository'
 import { PainelVendedorPage } from './features/presenca/presentation/PainelVendedorPage'
+import type { VendedorRepository } from './features/vendedores/domain/VendedorRepository'
+import { PerfilVendedorPage } from './features/vendedores/presentation/PerfilVendedorPage'
 import { QueroVenderPage } from './features/vendedores/presentation/QueroVenderPage'
 
 function Login() {
@@ -74,6 +77,12 @@ function QueroVender() {
   return <QueroVenderPage perfilId={usuario?.id ?? null} />
 }
 
+/** Perfil do vendedor (US10): o id vem do endereço `/vendedor/:id`. */
+function PerfilVendedor({ repositorio }: { repositorio?: VendedorRepository }) {
+  const { id = '' } = useParams()
+  return <PerfilVendedorPage id={id} repositorio={repositorio} />
+}
+
 function MeusItens() {
   const usuario = useSessaoStore((s) => s.usuario)
   return <MeusItensPage perfilId={usuario?.id ?? null} />
@@ -97,10 +106,12 @@ function Mapa({ presencaRepositorio }: { presencaRepositorio?: PresencaRepositor
 interface AppRotasProps {
   /** Só para os testes: repositório de presença falso (sem rede). */
   presencaRepositorio?: PresencaRepository
+  /** Só para os testes: repositório de vendedores falso (sem rede). */
+  vendedorRepositorio?: VendedorRepository
 }
 
 /** As rotas do app, sem o roteador (os testes usam um `MemoryRouter` em volta). */
-export function AppRotas({ presencaRepositorio }: AppRotasProps = {}) {
+export function AppRotas({ presencaRepositorio, vendedorRepositorio }: AppRotasProps = {}) {
   return (
     <Routes>
       <Route element={<RotaSoVisitante />}>
@@ -114,6 +125,10 @@ export function AppRotas({ presencaRepositorio }: AppRotasProps = {}) {
           <Route
             path={ROTAS.painel}
             element={<PainelVendedorPage repositorio={presencaRepositorio} />}
+          />
+          <Route
+            path={ROTAS.perfilVendedor}
+            element={<PerfilVendedor repositorio={vendedorRepositorio} />}
           />
           <Route path={ROTAS.meusItens} element={<MeusItens />} />
         </Route>
