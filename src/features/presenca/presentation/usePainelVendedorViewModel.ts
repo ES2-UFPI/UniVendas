@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Falha } from '../../../core/falha'
 import { LocalizacaoService, type LatLng } from '../../../core/localizacaoService'
+import { useSessaoStore } from '../../../core/sessaoStore'
+import { esquecerPresenca, lembrarPresenca, lerMarcaPresenca } from '../data/MarcaPresencaAtiva'
 import { SupabasePresencaRepository } from '../data/SupabasePresencaRepository'
 import { ResultadoRegistro, type PresencaRepository } from '../domain/PresencaRepository'
 import { deveEnviarSinal, type UltimoSinal } from '../domain/RegraSinal'
@@ -10,6 +12,10 @@ export const LIMITE_REFERENCIA = 80
 
 const MENSAGEM_FORA_DO_CAMPUS =
   'Você está fora do campus. Entre no campus para ficar visível no mapa.'
+const MENSAGEM_NAO_RELIGOU =
+  'Sua presença estava desligada e você está fora do campus, então ela não voltou sozinha. Ao chegar, toque em "Estou no campus".'
+const MENSAGEM_DESLIGADO_PELO_SERVIDOR =
+  'Sua presença foi desligada: você saiu do campus ou ficou muito tempo sem sinal. Toque em "Estou no campus" para ligar de novo.'
 const MENSAGEM_REFERENCIA = `A referência pode ter até ${LIMITE_REFERENCIA} caracteres.`
 const MENSAGEM_PADRAO = 'Não foi possível ficar visível no mapa. Tente de novo.'
 const MENSAGEM_DESLIGAR = 'Não foi possível desligar sua presença. Tente de novo.'
@@ -26,7 +32,9 @@ interface Opcoes {
 
 /**
  * ViewModel do painel do vendedor (US04): guarda a referência, o estado do botão
- * "Estou no campus" e o erro. Ao abrir, recupera a presença que o vendedor já tem ligada.
+ * "Estou no campus" e o erro. Ao abrir, recupera a presença que o vendedor já tem ligada; se o servidor
+ * já a apagou mas o vendedor não desligou de propósito, liga de novo sozinho quando ele está no campus (RN16).
+ * Se o servidor desligar enquanto o painel está aberto (RN15, RN16), mostra o aviso.
  * Ao ligar, lê a posição do celular e chama o `PresencaRepository`; ao desligar, volta ao estado inicial.
  * Enquanto está ativo, acompanha o GPS e renova o sinal a cada 2 minutos ou 25 m (RN13).
  * O ponto fixo no mapa entra na próxima tarefa.
@@ -36,6 +44,7 @@ export function usePainelVendedorViewModel({ repositorio, localizacao }: Opcoes 
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [referencia, setReferencia] = useState('')
+  const usuarioId = useSessaoStore((s) => s.usuario?.id ?? null)
 
   // O estado `carregando` só muda no próximo render; a ref barra o segundo toque que chega antes disso.
   const emAndamento = useRef(false)
@@ -44,19 +53,81 @@ export function usePainelVendedorViewModel({ repositorio, localizacao }: Opcoes 
 
   useEffect(() => {
     let cancelado = false
-    ;(repositorio ?? new SupabasePresencaRepository())
+    const repo = repositorio ?? new SupabasePresencaRepository()
+
+    // Religa sozinho: o vendedor tinha ligado e não desligou de propósito, mas o servidor apagou a presença.
+    async function religar(referenciaSalva: string) {
+      emAndamento.current = true
+      setCarregando(true)
+      try {
+        const real = await (localizacao ?? new LocalizacaoService()).posicaoAtual()
+        if (cancelado) return
+        const resultado = await repo.registrar(real, null, referenciaSalva)
+        if (cancelado) return
+        if (resultado === ResultadoRegistro.ATIVO) {
+          ultimoSinal.current = { posicao: real, em: new Date() }
+          setAtivo(true)
+          setReferencia(referenciaSalva)
+        } else {
+          if (usuarioId) esquecerPresenca(usuarioId)
+          setErro(MENSAGEM_NAO_RELIGOU)
+        }
+      } catch (e) {
+        // Sem GPS ou sem rede agora: a marca fica, e o vendedor liga à mão se quiser.
+        if (e instanceof Falha && e.codigo === 'nao-e-vendedor' && usuarioId) {
+          esquecerPresenca(usuarioId)
+        }
+      } finally {
+        emAndamento.current = false
+        setCarregando(false)
+      }
+    }
+
+    repo
       .minhaPresenca()
-      .then((presenca) => {
-        if (cancelado || !presenca) return
-        ultimoSinal.current = { posicao: presenca.posicao, em: presenca.ultimoSinalEm }
-        setAtivo(true)
-        setReferencia(presenca.referencia ?? '')
+      .then(async (presenca) => {
+        if (cancelado) return
+        if (presenca) {
+          ultimoSinal.current = { posicao: presenca.posicao, em: presenca.ultimoSinalEm }
+          setAtivo(true)
+          setReferencia(presenca.referencia ?? '')
+          return
+        }
+        const marca = usuarioId ? lerMarcaPresenca(usuarioId) : null
+        if (marca && !emAndamento.current) await religar(marca.referencia)
       })
       .catch(() => {})
     return () => {
       cancelado = true
     }
-  }, [repositorio])
+  }, [repositorio, localizacao, usuarioId])
+
+  // Com a presença ligada, avisa se o servidor a desligar (saída do campus ou 30 minutos sem sinal).
+  useEffect(() => {
+    if (!ativo) return
+    const repo = repositorio ?? new SupabasePresencaRepository()
+    let cancelado = false
+    let cancelar = () => {}
+
+    repo
+      .minhaPresenca()
+      .then((presenca) => {
+        if (cancelado || !presenca) return
+        const meuId = presenca.vendedorId
+        cancelar = repo.observarAtivos((ativos) => {
+          // Quando o próprio vendedor desliga, a lista também perde o nome dele, mas sem aviso.
+          if (emAndamento.current || ativos.some((a) => a.vendedorId === meuId)) return
+          setAtivo(false)
+          setErro(MENSAGEM_DESLIGADO_PELO_SERVIDOR)
+        })
+      })
+      .catch(() => {})
+
+    return () => {
+      cancelado = true
+      cancelar()
+    }
+  }, [ativo, repositorio])
 
   // Com a presença ligada, acompanha o GPS e envia um sinal quando a regra do RN13 mandar.
   useEffect(() => {
@@ -129,6 +200,7 @@ export function usePainelVendedorViewModel({ repositorio, localizacao }: Opcoes 
 
       if (resultado === ResultadoRegistro.ATIVO) {
         ultimoSinal.current = { posicao: real, em: new Date() }
+        if (usuarioId) lembrarPresenca(usuarioId, referencia)
         setAtivo(true)
         return true
       }
@@ -155,6 +227,7 @@ export function usePainelVendedorViewModel({ repositorio, localizacao }: Opcoes 
     try {
       await (repositorio ?? new SupabasePresencaRepository()).desligar()
       ultimoSinal.current = null
+      if (usuarioId) esquecerPresenca(usuarioId)
       setAtivo(false)
       setReferencia('')
       return true

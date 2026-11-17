@@ -1,7 +1,10 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Falha } from '../../../core/falha'
 import type { LatLng, LocalizacaoService } from '../../../core/localizacaoService'
+import { useSessaoStore } from '../../../core/sessaoStore'
+import { Usuario } from '../../auth/domain/Usuario'
+import { lembrarPresenca, lerMarcaPresenca } from '../data/MarcaPresencaAtiva'
 import { Presenca } from '../domain/Presenca'
 import { ResultadoRegistro, type PresencaRepository } from '../domain/PresencaRepository'
 import { LIMITE_REFERENCIA, usePainelVendedorViewModel } from './usePainelVendedorViewModel'
@@ -16,6 +19,12 @@ function falsos(
   minhaPresenca = vi.fn().mockResolvedValue(null),
   enviarSinal = vi.fn().mockResolvedValue(ResultadoRegistro.ATIVO),
 ) {
+  // `observarAtivos` guarda a função que recebe a lista, para o teste simular o servidor desligando alguém.
+  const lista = { mudou: vi.fn<(ativos: Presenca[]) => void>() }
+  const observarAtivos = vi.fn((aoMudar: (ativos: Presenca[]) => void) => {
+    lista.mudou = aoMudar as typeof lista.mudou
+    return () => {}
+  })
   // `acompanhar` guarda a função que recebe as leituras do GPS, para o teste simular o vendedor andando.
   const leituras = { nova: vi.fn<(posicao: LatLng) => void>(), parou: vi.fn() }
   const acompanhar = vi.fn((aoReceber: (p: LatLng) => void) => {
@@ -28,12 +37,14 @@ function falsos(
       desligar,
       minhaPresenca,
       enviarSinal,
+      observarAtivos,
     } as unknown as PresencaRepository,
     localizacao: { posicaoAtual, acompanhar } as Pick<
       LocalizacaoService,
       'posicaoAtual' | 'acompanhar'
     >,
     enviarSinal,
+    lista,
     leituras,
     registrar,
     posicaoAtual,
@@ -42,7 +53,16 @@ function falsos(
   }
 }
 
-afterEach(() => vi.useRealTimers())
+afterEach(() => {
+  cleanup()
+  vi.useRealTimers()
+  localStorage.clear()
+  useSessaoStore.setState({ usuario: null })
+})
+
+function entrarComo(id: string) {
+  useSessaoStore.setState({ usuario: new Usuario(id, 'Ana', 'ana@ufpi.edu.br') })
+}
 
 /** A posição `metros` ao norte de `posicao` (1 grau de latitude ≈ 111,19 km). */
 function aoNorte(metros: number): LatLng {
@@ -323,6 +343,110 @@ describe('usePainelVendedorViewModel', () => {
       unmount()
 
       expect(leituras.parou).toHaveBeenCalled()
+    })
+  })
+  describe('religar sozinho e avisar (RN15, RN16)', () => {
+    it('liga de novo sozinho ao reabrir dentro do campus, se não desligou de propósito', async () => {
+      entrarComo('u1')
+      lembrarPresenca('u1', 'em frente ao RU')
+      const { repositorio, localizacao, registrar } = falsos()
+
+      const { result } = renderHook(() => usePainelVendedorViewModel({ repositorio, localizacao }))
+
+      await waitFor(() => expect(result.current.ativo).toBe(true))
+      expect(registrar).toHaveBeenCalledWith(posicao, null, 'em frente ao RU')
+      expect(result.current.referencia).toBe('em frente ao RU')
+      expect(result.current.erro).toBeNull()
+    })
+
+    it('não religa quando o vendedor nunca ligou ou desligou de propósito', async () => {
+      entrarComo('u1')
+      const { repositorio, localizacao, registrar, posicaoAtual } = falsos()
+
+      const { result } = renderHook(() => usePainelVendedorViewModel({ repositorio, localizacao }))
+      await act(async () => {})
+
+      expect(result.current.ativo).toBe(false)
+      expect(posicaoAtual).not.toHaveBeenCalled()
+      expect(registrar).not.toHaveBeenCalled()
+    })
+
+    it('não religa quando já está ativo no servidor', async () => {
+      entrarComo('u1')
+      lembrarPresenca('u1', 'RU')
+      const minhaPresenca = vi.fn().mockResolvedValue(jaAtiva)
+      const { repositorio, localizacao, registrar } = falsos(
+        undefined,
+        undefined,
+        undefined,
+        minhaPresenca,
+      )
+
+      const { result } = renderHook(() => usePainelVendedorViewModel({ repositorio, localizacao }))
+
+      await waitFor(() => expect(result.current.ativo).toBe(true))
+      expect(registrar).not.toHaveBeenCalled()
+    })
+
+    it('avisa e esquece a marca quando reabre fora do campus', async () => {
+      entrarComo('u1')
+      lembrarPresenca('u1', 'RU')
+      const registrar = vi.fn().mockResolvedValue(ResultadoRegistro.FORA_DO_CAMPUS)
+      const { repositorio, localizacao } = falsos(registrar)
+
+      const { result } = renderHook(() => usePainelVendedorViewModel({ repositorio, localizacao }))
+
+      await waitFor(() => expect(result.current.erro).toContain('fora do campus'))
+      expect(result.current.ativo).toBe(false)
+      expect(lerMarcaPresenca('u1')).toBeNull()
+    })
+
+    it('mantém a marca e fica quieto quando o GPS não responde ao reabrir', async () => {
+      entrarComo('u1')
+      lembrarPresenca('u1', 'RU')
+      const posicaoAtual = vi
+        .fn()
+        .mockRejectedValue(new Falha('Sem permissão.', 'permissao-negada'))
+      const { repositorio, localizacao } = falsos(undefined, posicaoAtual)
+
+      const { result } = renderHook(() => usePainelVendedorViewModel({ repositorio, localizacao }))
+      await act(async () => {})
+
+      expect(result.current.ativo).toBe(false)
+      expect(result.current.erro).toBeNull()
+      expect(lerMarcaPresenca('u1')).not.toBeNull()
+    })
+
+    it('guarda a marca ao ligar e a apaga ao desligar de propósito', async () => {
+      entrarComo('u1')
+      const { repositorio, localizacao } = falsos()
+      const { result } = renderHook(() => usePainelVendedorViewModel({ repositorio, localizacao }))
+      act(() => result.current.alterarReferencia('RU'))
+
+      await act(() => result.current.ligar())
+      expect(lerMarcaPresenca('u1')).toEqual({ referencia: 'RU' })
+
+      await act(() => result.current.desligar())
+      expect(lerMarcaPresenca('u1')).toBeNull()
+    })
+
+    it('mostra o aviso quando o servidor desliga o vendedor com o painel aberto', async () => {
+      const minhaPresenca = vi.fn().mockResolvedValue(jaAtiva)
+      const { repositorio, localizacao, lista } = falsos(
+        undefined,
+        undefined,
+        undefined,
+        minhaPresenca,
+      )
+      const { result } = renderHook(() => usePainelVendedorViewModel({ repositorio, localizacao }))
+      await waitFor(() => expect(result.current.ativo).toBe(true))
+
+      act(() => lista.mudou([jaAtiva]))
+      expect(result.current.ativo).toBe(true)
+
+      act(() => lista.mudou([]))
+      expect(result.current.ativo).toBe(false)
+      expect(result.current.erro).toContain('desligada')
     })
   })
 })
