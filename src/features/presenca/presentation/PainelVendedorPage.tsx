@@ -6,7 +6,7 @@ interface PainelVendedorPageProps {
   /** Só para os testes: repositório falso. */
   repositorio?: PresencaRepository
   /** Só para os testes: localização falsa. */
-  localizacao?: Pick<LocalizacaoService, 'posicaoAtual'>
+  localizacao?: Pick<LocalizacaoService, 'posicaoAtual' | 'acompanhar'>
 }
 
 /** Painel do vendedor (US04): o botão "Estou no campus" e a referência opcional. */

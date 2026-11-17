@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Falha } from '../../../core/falha'
-import type { LocalizacaoService } from '../../../core/localizacaoService'
+import type { LatLng, LocalizacaoService } from '../../../core/localizacaoService'
 import { Presenca } from '../domain/Presenca'
 import { ResultadoRegistro, type PresencaRepository } from '../domain/PresencaRepository'
 import { LIMITE_REFERENCIA, usePainelVendedorViewModel } from './usePainelVendedorViewModel'
@@ -14,15 +14,39 @@ function falsos(
   posicaoAtual = vi.fn().mockResolvedValue(posicao),
   desligar = vi.fn().mockResolvedValue(undefined),
   minhaPresenca = vi.fn().mockResolvedValue(null),
+  enviarSinal = vi.fn().mockResolvedValue(ResultadoRegistro.ATIVO),
 ) {
+  // `acompanhar` guarda a função que recebe as leituras do GPS, para o teste simular o vendedor andando.
+  const leituras = { nova: vi.fn<(posicao: LatLng) => void>(), parou: vi.fn() }
+  const acompanhar = vi.fn((aoReceber: (p: LatLng) => void) => {
+    leituras.nova = aoReceber as typeof leituras.nova
+    return leituras.parou
+  })
   return {
-    repositorio: { registrar, desligar, minhaPresenca } as unknown as PresencaRepository,
-    localizacao: { posicaoAtual } as Pick<LocalizacaoService, 'posicaoAtual'>,
+    repositorio: {
+      registrar,
+      desligar,
+      minhaPresenca,
+      enviarSinal,
+    } as unknown as PresencaRepository,
+    localizacao: { posicaoAtual, acompanhar } as Pick<
+      LocalizacaoService,
+      'posicaoAtual' | 'acompanhar'
+    >,
+    enviarSinal,
+    leituras,
     registrar,
     posicaoAtual,
     desligar,
     minhaPresenca,
   }
+}
+
+afterEach(() => vi.useRealTimers())
+
+/** A posição `metros` ao norte de `posicao` (1 grau de latitude ≈ 111,19 km). */
+function aoNorte(metros: number): LatLng {
+  return { latitude: posicao.latitude + metros / 111_195, longitude: posicao.longitude }
 }
 
 describe('usePainelVendedorViewModel', () => {
@@ -215,5 +239,90 @@ describe('usePainelVendedorViewModel', () => {
 
     expect(result.current.ativo).toBe(false)
     expect(result.current.erro).toBeNull()
+  })
+  describe('sinal periódico (RN13)', () => {
+    async function ligado() {
+      vi.useFakeTimers()
+      const f = falsos()
+      const { result, unmount } = renderHook(() =>
+        usePainelVendedorViewModel({ repositorio: f.repositorio, localizacao: f.localizacao }),
+      )
+      await act(() => result.current.ligar())
+      return { ...f, result, unmount }
+    }
+
+    it('só acompanha o GPS enquanto está ativo', async () => {
+      vi.useFakeTimers()
+      const f = falsos()
+      const { result } = renderHook(() =>
+        usePainelVendedorViewModel({ repositorio: f.repositorio, localizacao: f.localizacao }),
+      )
+      expect(f.localizacao.acompanhar).not.toHaveBeenCalled()
+
+      await act(() => result.current.ligar())
+      expect(f.localizacao.acompanhar).toHaveBeenCalledTimes(1)
+
+      await act(() => result.current.desligar())
+      expect(f.leituras.parou).toHaveBeenCalled()
+    })
+
+    it('não envia sinal logo depois de ligar nem com o vendedor quase parado', async () => {
+      const { enviarSinal, leituras } = await ligado()
+
+      await act(async () => leituras.nova(aoNorte(10)))
+
+      expect(enviarSinal).not.toHaveBeenCalled()
+    })
+
+    it('envia um sinal quando o vendedor se move mais de 25 m', async () => {
+      const { enviarSinal, leituras } = await ligado()
+      const nova = aoNorte(30)
+
+      await act(async () => leituras.nova(nova))
+
+      expect(enviarSinal).toHaveBeenCalledWith(nova, null, '')
+    })
+
+    it('envia um sinal quando passam 2 minutos, mesmo parado', async () => {
+      const { enviarSinal, leituras } = await ligado()
+      await act(async () => leituras.nova(posicao))
+      expect(enviarSinal).not.toHaveBeenCalled()
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(120_000)
+      })
+
+      expect(enviarSinal).toHaveBeenCalledTimes(1)
+      expect(enviarSinal).toHaveBeenCalledWith(posicao, null, '')
+    })
+
+    it('desliga quando o servidor diz que saiu do campus (RN15)', async () => {
+      const { result, enviarSinal, leituras } = await ligado()
+      enviarSinal.mockResolvedValue(ResultadoRegistro.FORA_DO_CAMPUS)
+
+      await act(async () => leituras.nova(aoNorte(50)))
+
+      expect(result.current.ativo).toBe(false)
+      expect(result.current.erro).toContain('fora do campus')
+    })
+
+    it('continua ativo e tenta de novo quando o envio falha', async () => {
+      const { result, enviarSinal, leituras } = await ligado()
+      enviarSinal.mockRejectedValueOnce(new Error('rede caiu'))
+
+      await act(async () => leituras.nova(aoNorte(30)))
+      await act(async () => leituras.nova(aoNorte(31)))
+
+      expect(result.current.ativo).toBe(true)
+      expect(enviarSinal).toHaveBeenCalledTimes(2)
+    })
+
+    it('para de acompanhar quando a tela é fechada', async () => {
+      const { leituras, unmount } = await ligado()
+
+      unmount()
+
+      expect(leituras.parou).toHaveBeenCalled()
+    })
   })
 })
