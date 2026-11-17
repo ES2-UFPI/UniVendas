@@ -18,7 +18,10 @@ function falsos(
 ) {
   return {
     repositorio: { registrar, desligar, minhaPresenca } as unknown as PresencaRepository,
-    localizacao: { posicaoAtual } as Pick<LocalizacaoService, 'posicaoAtual'>,
+    localizacao: { posicaoAtual, acompanhar: vi.fn(() => () => {}) } as Pick<
+      LocalizacaoService,
+      'posicaoAtual' | 'acompanhar'
+    >,
     registrar,
     desligar,
     minhaPresenca,
