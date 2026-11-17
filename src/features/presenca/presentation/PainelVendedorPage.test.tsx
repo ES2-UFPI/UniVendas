@@ -137,3 +137,39 @@ describe('PainelVendedorPage', () => {
     expect(screen.getByLabelText('Referência (opcional)')).toHaveValue('em frente ao RU')
   })
 })
+
+describe('PainelVendedorPage: ponto fixo no mapa (RN14)', () => {
+  it('tocar no mapa escolhe o ponto, e ligar manda esse ponto', async () => {
+    const { repositorio, localizacao, registrar } = falsos()
+    const { container } = render(
+      <PainelVendedorPage repositorio={repositorio} localizacao={localizacao} />,
+    )
+    expect(screen.queryByTitle('Ponto escolhido')).not.toBeInTheDocument()
+
+    fireEvent.click(container.querySelector('.leaflet-container')!)
+
+    expect(await screen.findByTitle('Ponto escolhido')).toBeInTheDocument()
+    fireEvent.click(botao())
+    await screen.findByRole('status')
+    expect(registrar).toHaveBeenCalledWith(
+      posicao,
+      expect.objectContaining({ latitude: expect.any(Number), longitude: expect.any(Number) }),
+      '',
+    )
+  })
+
+  it('"Usar minha posição real" tira o ponto', async () => {
+    const { repositorio, localizacao, registrar } = falsos()
+    const { container } = render(
+      <PainelVendedorPage repositorio={repositorio} localizacao={localizacao} />,
+    )
+    fireEvent.click(container.querySelector('.leaflet-container')!)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Usar minha posição real' }))
+
+    expect(screen.queryByTitle('Ponto escolhido')).not.toBeInTheDocument()
+    fireEvent.click(botao())
+    await screen.findByRole('status')
+    expect(registrar).toHaveBeenCalledWith(posicao, null, '')
+  })
+})

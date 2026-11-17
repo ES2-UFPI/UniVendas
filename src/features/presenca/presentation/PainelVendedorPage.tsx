@@ -1,5 +1,6 @@
 import type { LocalizacaoService } from '../../../core/localizacaoService'
 import type { PresencaRepository } from '../domain/PresencaRepository'
+import { EscolherPontoNoMapa } from './EscolherPontoNoMapa'
 import { LIMITE_REFERENCIA, usePainelVendedorViewModel } from './usePainelVendedorViewModel'
 
 interface PainelVendedorPageProps {
@@ -9,7 +10,7 @@ interface PainelVendedorPageProps {
   localizacao?: Pick<LocalizacaoService, 'posicaoAtual' | 'acompanhar'>
 }
 
-/** Painel do vendedor (US04): o botão "Estou no campus" e a referência opcional. */
+/** Painel do vendedor (US04, US05): o botão "Estou no campus", a referência e o ponto fixo opcionais. */
 export function PainelVendedorPage({ repositorio, localizacao }: PainelVendedorPageProps) {
   const vm = usePainelVendedorViewModel({ repositorio, localizacao })
 
@@ -36,6 +37,30 @@ export function PainelVendedorPage({ repositorio, localizacao }: PainelVendedorP
         <p className="text-xs text-gray-500">
           {vm.referencia.length}/{LIMITE_REFERENCIA}
         </p>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-1">
+        <p className="text-sm font-medium text-gray-800">Ponto no mapa (opcional)</p>
+        <p className="text-xs text-gray-500">
+          {vm.ponto
+            ? 'Seu marcador vai ficar no ponto escolhido, dentro do campus.'
+            : 'Toque no mapa para fixar onde seu marcador aparece. Sem ponto, o mapa mostra onde você está.'}
+        </p>
+        <EscolherPontoNoMapa
+          ponto={vm.ponto}
+          aoEscolher={vm.escolherPonto}
+          bloqueado={vm.carregando || vm.ativo}
+        />
+        {vm.ponto && !vm.ativo && (
+          <button
+            type="button"
+            onClick={() => vm.escolherPonto(null)}
+            disabled={vm.carregando}
+            className="self-start text-sm font-medium text-green-700 underline disabled:opacity-60"
+          >
+            Usar minha posição real
+          </button>
+        )}
       </div>
 
       {vm.erro && (
