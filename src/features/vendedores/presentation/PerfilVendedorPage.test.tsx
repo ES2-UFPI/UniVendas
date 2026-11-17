@@ -46,6 +46,21 @@ describe('PerfilVendedorPage (US10)', () => {
     expect(screen.getByText(/R\$\s*6,50/)).toBeInTheDocument()
   })
 
+  it('mostra o item esgotado riscado e com a marca "Esgotado", e o disponível normal (RN09)', async () => {
+    const itens = [
+      new Item('i1', 'v1', 7, 'Brownie', 6.5),
+      new Item('i2', 'v1', 7, 'Café', 3, '', null, false),
+    ]
+    const comEsgotado = new PerfilVendedor(ana, [], itens, true)
+    render(
+      <PerfilVendedorPage id="v1" repositorio={repositorio(() => Promise.resolve(comEsgotado))} />,
+    )
+
+    expect(await screen.findByText('Café')).toHaveClass('line-through')
+    expect(screen.getByText('Brownie')).not.toHaveClass('line-through')
+    expect(screen.getAllByText('Esgotado')).toHaveLength(1)
+  })
+
   it('mostra "Fora do campus agora" quando o vendedor está desligado (RN19)', async () => {
     render(
       <PerfilVendedorPage
