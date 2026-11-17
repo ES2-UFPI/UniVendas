@@ -59,6 +59,24 @@ export class LocalizacaoService {
   }
 
   /**
+   * Acompanha a posição (`watchPosition`): chama `aoReceber` a cada leitura nova e `aoFalhar` se der erro.
+   * Devolve a função que para de acompanhar; quem chama deve usá-la ao sair da tela.
+   */
+  acompanhar(aoReceber: (posicao: LatLng) => void, aoFalhar: (falha: Falha) => void): () => void {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      aoFalhar(falha('nao-suportado'))
+      return () => {}
+    }
+    // Sem `timeout`: parado, o aparelho pode ficar muito tempo sem leitura nova, e isso não é erro.
+    const id = navigator.geolocation.watchPosition(
+      ({ coords }) => aoReceber({ latitude: coords.latitude, longitude: coords.longitude }),
+      (erro) => aoFalhar(traduzirErro(erro)),
+      { enableHighAccuracy: true, maximumAge: 0 },
+    )
+    return () => navigator.geolocation.clearWatch(id)
+  }
+
+  /**
    * Faz o navegador mostrar o pedido de permissão (se ainda não foi respondido).
    * Devolve false se o usuário negou ou o aparelho não tem localização.
    * Falhas que não são de permissão (sem sinal, tempo esgotado) contam como permitido.

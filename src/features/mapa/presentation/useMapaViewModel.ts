@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Falha } from '../../../core/falha'
+import { ContatoService } from '../../contato/domain/ContatoService'
 import { SupabasePresencaRepository } from '../../presenca/data/SupabasePresencaRepository'
 import type { Presenca } from '../../presenca/domain/Presenca'
 import type { PresencaRepository } from '../../presenca/domain/PresencaRepository'
@@ -12,6 +13,8 @@ interface Opcoes {
   repositorio?: PresencaRepository
 }
 
+const contatoService = new ContatoService()
+
 function paraMarcador(presenca: Presenca): Marcador {
   return {
     id: presenca.vendedorId,
@@ -19,6 +22,12 @@ function paraMarcador(presenca: Presenca): Marcador {
     longitude: presenca.posicao.longitude,
     nome: presenca.nomeVendedor,
     referencia: presenca.referencia,
+    // O ViewModel já entrega o link pronto: a tela só desenha os botões (US07, RN20).
+    contatos: presenca.contatos.map((contato) => ({
+      canal: contato.canal,
+      rotulo: contatoService.rotulo(contato),
+      link: contatoService.gerarLink(contato),
+    })),
   }
 }
 

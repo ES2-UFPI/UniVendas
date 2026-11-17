@@ -8,7 +8,7 @@ import { useCadastroVendedorViewModel } from './useCadastroVendedorViewModel'
 const salvo = new VendedorAmbulante('v1', 'u1', 'Brownies da Ana')
 
 function repositorioFalso(criar = vi.fn().mockResolvedValue(salvo)) {
-  return { repositorio: { criar } as VendedorRepository, criar }
+  return { repositorio: { criar } as unknown as VendedorRepository, criar }
 }
 
 function preencher(result: { current: ReturnType<typeof useCadastroVendedorViewModel> }) {

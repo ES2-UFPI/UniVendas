@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { LatLng } from '../../../core/localizacaoService'
 import { Falha } from '../../../core/falha'
 import { SupabaseService } from '../../../core/supabaseService'
+import { Contato, type CanalTipo } from '../../vendedores/domain/Contato'
 import type { Database } from '../../../types/database.types'
 import { Presenca } from '../domain/Presenca'
 import {
@@ -11,11 +12,12 @@ import {
 } from '../domain/PresencaRepository'
 
 const MENSAGEM_PADRAO = 'Não foi possível ficar visível no mapa. Tente de novo.'
+const MENSAGEM_DESLIGAR = 'Não foi possível desligar sua presença. Tente de novo.'
 const MENSAGEM_LISTAR = 'Não foi possível carregar os vendedores do mapa. Tente de novo.'
 const NOME_PADRAO = 'Vendedor'
 
 /** Traduz os códigos de erro do PostgreSQL (da função `registrar_presenca`) para mensagens que o usuário entende. */
-function paraFalha(erro: { code?: string }): Falha {
+function paraFalha(erro: { code?: string }, mensagemPadrao = MENSAGEM_PADRAO): Falha {
   if (erro.code === '42501') {
     return new Falha(
       'Só vendedores podem ficar visíveis no mapa. Crie seu perfil de vendedor.',
@@ -28,12 +30,46 @@ function paraFalha(erro: { code?: string }): Falha {
       'dados-invalidos',
     )
   }
-  return new Falha(MENSAGEM_PADRAO, erro.code ?? 'desconhecido')
+  return new Falha(mensagemPadrao, erro.code ?? 'desconhecido')
 }
 
-/** Colunas de `presenca` e o nome do vendedor, que o balão do marcador mostra. */
+/** Colunas de `presenca`, o nome e os contatos do vendedor, que o balão do marcador mostra. */
 const COLUNAS =
-  'vendedor_id, latitude, longitude, ponto_escolhido, referencia, ultimo_sinal_em, vendedores(nome_exibicao)'
+  'vendedor_id, latitude, longitude, ponto_escolhido, referencia, ultimo_sinal_em, vendedores(nome_exibicao, contatos(canal, valor))'
+
+const CANAIS: readonly string[] = ['whatsapp', 'telefone'] satisfies CanalTipo[]
+
+/** Converte as linhas de `contatos` em entidades, ignorando canal que o app ainda não conhece. */
+function paraContatos(linhas: { canal: string; valor: string }[] | undefined): Contato[] {
+  return (linhas ?? [])
+    .filter((c) => CANAIS.includes(c.canal))
+    .map((c) => new Contato(c.canal as CanalTipo, c.valor))
+}
+
+const COLUNAS_DO_DONO =
+  'vendedor_id, latitude, longitude, ponto_escolhido, referencia, ultimo_sinal_em, vendedores!inner(nome_exibicao, perfil_id)'
+
+interface LinhaPresenca {
+  vendedor_id: string
+  latitude: number
+  longitude: number
+  ponto_escolhido: boolean
+  referencia: string | null
+  ultimo_sinal_em: string
+  vendedores: { nome_exibicao: string; contatos?: { canal: string; valor: string }[] } | null
+}
+
+function paraPresenca(linha: LinhaPresenca): Presenca {
+  return new Presenca(
+    linha.vendedor_id,
+    linha.vendedores?.nome_exibicao ?? NOME_PADRAO,
+    { latitude: linha.latitude, longitude: linha.longitude },
+    linha.ponto_escolhido,
+    linha.referencia,
+    new Date(linha.ultimo_sinal_em),
+    paraContatos(linha.vendedores?.contatos),
+  )
+}
 
 export class SupabasePresencaRepository implements PresencaRepository {
   private readonly client: SupabaseClient<Database>
@@ -78,25 +114,39 @@ export class SupabasePresencaRepository implements PresencaRepository {
     }
   }
 
+  enviarSinal(real: LatLng, ponto: LatLng | null, referencia: string): Promise<ResultadoRegistro> {
+    return this.registrar(real, ponto, referencia)
+  }
+
+  async desligar(): Promise<void> {
+    const { error } = await this.client.rpc('desligar_presenca')
+    if (error) throw paraFalha(error, MENSAGEM_DESLIGAR)
+  }
+
   async listarAtivos(): Promise<Presenca[]> {
-    // O RLS só deixa ler quem está logado (RN04). A presença e o nome do vendedor vêm numa consulta só.
+    // O RLS só deixa ler quem está logado (RN04). A presença, o nome e os contatos vêm numa consulta só.
     const { data, error } = await this.client.from('presenca').select(COLUNAS)
     if (error) throw new Falha(MENSAGEM_LISTAR, error.code ?? 'desconhecido')
 
     const agora = this.agora()
-    return data
-      .map(
-        (linha) =>
-          new Presenca(
-            linha.vendedor_id,
-            linha.vendedores?.nome_exibicao ?? NOME_PADRAO,
-            { latitude: linha.latitude, longitude: linha.longitude },
-            linha.ponto_escolhido,
-            linha.referencia,
-            new Date(linha.ultimo_sinal_em),
-          ),
-      )
-      .filter((presenca) => presenca.estaAtiva(agora))
+    return data.map(paraPresenca).filter((presenca) => presenca.estaAtiva(agora))
+  }
+
+  async minhaPresenca(): Promise<Presenca | null> {
+    const { data: sessao } = await this.client.auth.getSession()
+    const perfilId = sessao.session?.user.id
+    if (!perfilId) return null
+
+    const { data, error } = await this.client
+      .from('presenca')
+      .select(COLUNAS_DO_DONO)
+      .eq('vendedores.perfil_id', perfilId)
+      .maybeSingle()
+    if (error) throw new Falha(MENSAGEM_LISTAR, error.code ?? 'desconhecido')
+    if (!data) return null
+
+    const presenca = paraPresenca(data)
+    return presenca.estaAtiva(this.agora()) ? presenca : null
   }
 
   observarAtivos(callback: (ativos: Presenca[]) => void): Unsubscribe {

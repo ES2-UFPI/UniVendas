@@ -1,0 +1,5 @@
+# O Netlify só publica a branch de produção (main), que recebe apenas releases.
+# Branch deploys e deploy previews (PRs) são pulados para não gastar o plano gratuito.
+# O "ignore" pula o build quando o comando termina com código 0.
+[build]
+  ignore = '[ "$CONTEXT" != "production" ]'

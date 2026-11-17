@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import {
   BrowserRouter,
   Link,
@@ -7,6 +6,7 @@ import {
   Routes,
   useLocation,
   useNavigate,
+  useParams,
 } from 'react-router-dom'
 import { Layout } from './core/Layout'
 import { RotaProtegida, RotaSoVisitante } from './core/RotaProtegida'
@@ -14,23 +14,15 @@ import { ROTAS } from './core/routes'
 import { useSessaoStore } from './core/sessaoStore'
 import { CadastroPage } from './features/auth/presentation/CadastroPage'
 import { LoginPage } from './features/auth/presentation/LoginPage'
+import { MeusItensPage } from './features/itens/presentation/MeusItensPage'
+import { TelaVisitante } from './features/auth/presentation/TelaVisitante'
 import { MapaPage } from './features/mapa/presentation/MapaPage'
 import { useMapaViewModel } from './features/mapa/presentation/useMapaViewModel'
 import type { PresencaRepository } from './features/presenca/domain/PresencaRepository'
 import { PainelVendedorPage } from './features/presenca/presentation/PainelVendedorPage'
+import type { VendedorRepository } from './features/vendedores/domain/VendedorRepository'
+import { PerfilVendedorPage } from './features/vendedores/presentation/PerfilVendedorPage'
 import { QueroVenderPage } from './features/vendedores/presentation/QueroVenderPage'
-
-/** Topo simples das telas de login e cadastro, com um link para a outra tela. */
-function TelaVisitante({ children, rodape }: { children: ReactNode; rodape: ReactNode }) {
-  return (
-    <main className="flex min-h-screen flex-col items-center bg-white p-4">
-      <h1 className="mt-6 text-3xl font-bold text-green-700">UniVendas</h1>
-      <p className="text-gray-600">Vendedores do campus, perto de você.</p>
-      {children}
-      <p className="text-sm text-gray-700">{rodape}</p>
-    </main>
-  )
-}
 
 function Login() {
   const navegar = useNavigate()
@@ -43,7 +35,10 @@ function Login() {
       rodape={
         <>
           Não tem conta?{' '}
-          <Link to={ROTAS.cadastro} className="font-semibold text-green-700 underline">
+          <Link
+            to={ROTAS.cadastro}
+            className="font-bold text-marca-700 underline underline-offset-2 hover:text-marca-800"
+          >
             Criar conta
           </Link>
         </>
@@ -62,7 +57,10 @@ function Cadastro() {
       rodape={
         <>
           Já tem conta?{' '}
-          <Link to={ROTAS.login} className="font-semibold text-green-700 underline">
+          <Link
+            to={ROTAS.login}
+            className="font-bold text-marca-700 underline underline-offset-2 hover:text-marca-800"
+          >
             Entrar
           </Link>
         </>
@@ -77,6 +75,17 @@ function Cadastro() {
 function QueroVender() {
   const usuario = useSessaoStore((s) => s.usuario)
   return <QueroVenderPage perfilId={usuario?.id ?? null} />
+}
+
+/** Perfil do vendedor (US10): o id vem do endereço `/vendedor/:id`. */
+function PerfilVendedor({ repositorio }: { repositorio?: VendedorRepository }) {
+  const { id = '' } = useParams()
+  return <PerfilVendedorPage id={id} repositorio={repositorio} />
+}
+
+function MeusItens() {
+  const usuario = useSessaoStore((s) => s.usuario)
+  return <MeusItensPage perfilId={usuario?.id ?? null} />
 }
 
 /** O mapa com os vendedores ativos, que aparecem e somem em tempo real (US06). */
@@ -97,10 +106,12 @@ function Mapa({ presencaRepositorio }: { presencaRepositorio?: PresencaRepositor
 interface AppRotasProps {
   /** Só para os testes: repositório de presença falso (sem rede). */
   presencaRepositorio?: PresencaRepository
+  /** Só para os testes: repositório de vendedores falso (sem rede). */
+  vendedorRepositorio?: VendedorRepository
 }
 
 /** As rotas do app, sem o roteador (os testes usam um `MemoryRouter` em volta). */
-export function AppRotas({ presencaRepositorio }: AppRotasProps = {}) {
+export function AppRotas({ presencaRepositorio, vendedorRepositorio }: AppRotasProps = {}) {
   return (
     <Routes>
       <Route element={<RotaSoVisitante />}>
@@ -115,6 +126,11 @@ export function AppRotas({ presencaRepositorio }: AppRotasProps = {}) {
             path={ROTAS.painel}
             element={<PainelVendedorPage repositorio={presencaRepositorio} />}
           />
+          <Route
+            path={ROTAS.perfilVendedor}
+            element={<PerfilVendedor repositorio={vendedorRepositorio} />}
+          />
+          <Route path={ROTAS.meusItens} element={<MeusItens />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to={ROTAS.mapa} replace />} />

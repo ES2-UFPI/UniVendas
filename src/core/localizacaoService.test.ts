@@ -47,6 +47,50 @@ describe('LocalizacaoService.posicaoAtual', () => {
   })
 })
 
+describe('LocalizacaoService.acompanhar', () => {
+  it('entrega cada posição nova e para de acompanhar quando cancelado', () => {
+    let ok: ComSucesso = () => {}
+    const clearWatch = vi.fn()
+    const watchPosition = vi.fn((sucesso: ComSucesso) => {
+      ok = sucesso
+      return 7
+    })
+    vi.stubGlobal('navigator', { geolocation: { watchPosition, clearWatch } })
+    const recebidas: unknown[] = []
+
+    const parar = new LocalizacaoService().acompanhar((p) => recebidas.push(p), vi.fn())
+    ok({ coords: { latitude: -5.05, longitude: -42.79 } } as GeolocationPosition)
+    parar()
+
+    expect(recebidas).toEqual([{ latitude: -5.05, longitude: -42.79 }])
+    expect(clearWatch).toHaveBeenCalledWith(7)
+  })
+
+  it('traduz o erro do navegador para Falha', () => {
+    let erro: ComErro = () => {}
+    const watchPosition = vi.fn((_: ComSucesso, falhou: ComErro) => {
+      erro = falhou
+      return 1
+    })
+    vi.stubGlobal('navigator', { geolocation: { watchPosition, clearWatch: vi.fn() } })
+    const aoFalhar = vi.fn()
+
+    new LocalizacaoService().acompanhar(vi.fn(), aoFalhar)
+    erro({ code: 1 } as GeolocationPositionError)
+
+    expect(aoFalhar.mock.calls[0][0]).toMatchObject({ codigo: 'permissao-negada' })
+  })
+
+  it('avisa "nao-suportado" se o navegador não tem geolocalização', () => {
+    vi.stubGlobal('navigator', {})
+    const aoFalhar = vi.fn()
+
+    new LocalizacaoService().acompanhar(vi.fn(), aoFalhar)
+
+    expect(aoFalhar.mock.calls[0][0]).toMatchObject({ codigo: 'nao-suportado' })
+  })
+})
+
 describe('LocalizacaoService.pedirPermissao', () => {
   it('devolve true quando o usuário permite', async () => {
     simularPosicao(-5.05, -42.79)

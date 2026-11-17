@@ -10,7 +10,7 @@ afterEach(cleanup)
 function repositorioFalso(
   criar = vi.fn().mockResolvedValue(new VendedorAmbulante('v1', 'u1', 'Brownies da Ana')),
 ) {
-  return { repositorio: { criar } as VendedorRepository, criar }
+  return { repositorio: { criar } as unknown as VendedorRepository, criar }
 }
 
 function preencher() {

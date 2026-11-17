@@ -15,7 +15,6 @@ export type Unsubscribe = () => void
 /**
  * Padrão Repository: o resto do app depende desta interface, não do Supabase.
  * `observarAtivos` é o sujeito do padrão Observer: quem se inscreve recebe a lista nova a cada mudança.
- * Desativar a presença entra numa tarefa futura.
  */
 export interface PresencaRepository {
   /**
@@ -27,6 +26,18 @@ export interface PresencaRepository {
    * Lança `Falha` se não conseguir, inclusive quando o ponto escolhido está fora do campus.
    */
   registrar(real: LatLng, ponto: LatLng | null, referencia: string): Promise<ResultadoRegistro>
+
+  enviarSinal(real: LatLng, ponto: LatLng | null, referencia: string): Promise<ResultadoRegistro>
+
+  /** Desliga a presença do vendedor logado: ele some do mapa. Lança `Falha` se não conseguir. */
+  desligar(): Promise<void>
+
+  /**
+   * Devolve a presença do vendedor logado, para o painel abrir já ativo.
+   * É `null` se ele não ligou, não é vendedor, está sem sessão ou está há mais de 30 minutos sem sinal.
+   * Lança `Falha` se a leitura falhar.
+   */
+  minhaPresenca(): Promise<Presenca | null>
 
   /** Lista os vendedores ativos agora (com sinal há menos de 30 minutos). Lança `Falha` se não conseguir. */
   listarAtivos(): Promise<Presenca[]>

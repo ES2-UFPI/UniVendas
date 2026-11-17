@@ -1,15 +1,16 @@
 import type { LocalizacaoService } from '../../../core/localizacaoService'
 import type { PresencaRepository } from '../domain/PresencaRepository'
+import { EscolherPontoNoMapa } from './EscolherPontoNoMapa'
 import { LIMITE_REFERENCIA, usePainelVendedorViewModel } from './usePainelVendedorViewModel'
 
 interface PainelVendedorPageProps {
   /** Só para os testes: repositório falso. */
   repositorio?: PresencaRepository
   /** Só para os testes: localização falsa. */
-  localizacao?: Pick<LocalizacaoService, 'posicaoAtual'>
+  localizacao?: Pick<LocalizacaoService, 'posicaoAtual' | 'acompanhar'>
 }
 
-/** Painel do vendedor (US04): o botão "Estou no campus" e a referência opcional. */
+/** Painel do vendedor (US04, US05): o botão "Estou no campus", a referência e o ponto fixo opcionais. */
 export function PainelVendedorPage({ repositorio, localizacao }: PainelVendedorPageProps) {
   const vm = usePainelVendedorViewModel({ repositorio, localizacao })
 
@@ -38,6 +39,30 @@ export function PainelVendedorPage({ repositorio, localizacao }: PainelVendedorP
         </p>
       </div>
 
+      <div className="mt-4 flex flex-col gap-1">
+        <p className="text-sm font-medium text-gray-800">Ponto no mapa (opcional)</p>
+        <p className="text-xs text-gray-500">
+          {vm.ponto
+            ? 'Seu marcador vai ficar no ponto escolhido, dentro do campus.'
+            : 'Toque no mapa para fixar onde seu marcador aparece. Sem ponto, o mapa mostra onde você está.'}
+        </p>
+        <EscolherPontoNoMapa
+          ponto={vm.ponto}
+          aoEscolher={vm.escolherPonto}
+          bloqueado={vm.carregando || vm.ativo}
+        />
+        {vm.ponto && !vm.ativo && (
+          <button
+            type="button"
+            onClick={() => vm.escolherPonto(null)}
+            disabled={vm.carregando}
+            className="self-start text-sm font-medium text-green-700 underline disabled:opacity-60"
+          >
+            Usar minha posição real
+          </button>
+        )}
+      </div>
+
       {vm.erro && (
         <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">
           {vm.erro}
@@ -56,8 +81,18 @@ export function PainelVendedorPage({ repositorio, localizacao }: PainelVendedorP
         aria-pressed={vm.ativo}
         className="mt-4 w-full rounded-lg bg-green-600 px-4 py-3 font-semibold text-white hover:bg-green-700 disabled:opacity-60"
       >
-        {vm.carregando ? 'Ligando…' : 'Estou no campus'}
+        {vm.carregando && !vm.ativo ? 'Ligando…' : 'Estou no campus'}
       </button>
+      {vm.ativo && (
+        <button
+          type="button"
+          onClick={() => void vm.desligar()}
+          disabled={vm.carregando}
+          className="mt-2 w-full rounded-lg border border-red-600 px-4 py-3 font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+        >
+          {vm.carregando ? 'Desligando…' : 'Desligar'}
+        </button>
+      )}
     </section>
   )
 }

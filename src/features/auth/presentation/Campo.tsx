@@ -1,7 +1,17 @@
 import type { ReactNode } from 'react'
 
 export const estiloCampo =
-  'w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-600/30 aria-[invalid=true]:border-red-600'
+  'h-14 w-full rounded-[10px] border border-borda bg-white px-4 text-base text-tinta placeholder:text-tinta-suave/80 focus:border-marca-700 focus:outline-none focus:ring-2 focus:ring-marca-500/30 aria-[invalid=true]:border-red-600'
+
+/** Título grande das telas de login e cadastro. */
+export const estiloTitulo = 'text-4xl font-bold tracking-tight text-tinta lg:text-[3.5rem]'
+
+/** Texto de apoio logo abaixo do título. */
+export const estiloInstrucao = 'mt-2 text-base text-tinta-suave lg:text-lg'
+
+/** Botão principal (Entrar, Criar conta). */
+export const estiloBotao =
+  'mt-2 h-14 rounded-[10px] bg-marca-700 px-4 text-lg font-bold text-white hover:bg-marca-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marca-700 disabled:opacity-60'
 
 /** Rótulo, campo e mensagem de erro, no mesmo visual em todas as telas da autenticação. */
 export function Campo({
@@ -18,12 +28,12 @@ export function Campo({
   children: ReactNode
 }) {
   return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium text-gray-800">
+    <div className="flex flex-col gap-2">
+      <label htmlFor={id} className="text-base font-semibold text-tinta">
         {rotulo}
       </label>
       {children}
-      {dica && !erro && <p className="text-xs text-gray-500">{dica}</p>}
+      {dica && !erro && <p className="text-sm text-tinta-suave">{dica}</p>}
       {erro && (
         <p id={`${id}-erro`} className="text-sm text-red-700">
           {erro}

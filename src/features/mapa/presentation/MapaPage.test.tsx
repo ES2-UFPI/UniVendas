@@ -1,9 +1,16 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render as renderizar, screen, waitFor } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Falha } from '../../../core/falha'
 import { MapaPage } from './MapaPage'
 
 afterEach(cleanup)
+
+// O link "Ver perfil" usa o roteador, então a tela precisa de um em volta nos testes.
+function render(tela: ReactElement) {
+  return renderizar(<MemoryRouter>{tela}</MemoryRouter>)
+}
 
 describe('MapaPage', () => {
   it('mostra o mapa com a atribuição do OpenStreetMap', () => {
@@ -98,5 +105,80 @@ describe('MapaPage: balão do marcador (US06)', () => {
 
     expect(await screen.findByText('Café do Leo', { selector: 'p' })).toBeInTheDocument()
     expect(container.querySelectorAll('.leaflet-popup-content p')).toHaveLength(1)
+  })
+})
+
+describe('MapaPage: botões de contato no balão (US07)', () => {
+  const linkWhatsApp =
+    'https://wa.me/5586999990000?text=Oi!%20Vi%20seu%20an%C3%BAncio%20no%20UniVendas'
+
+  it('mostra WhatsApp e Ligar com os links do vendedor', async () => {
+    render(
+      <MapaPage
+        marcadores={[
+          {
+            id: 'a',
+            latitude: -5.0577,
+            longitude: -42.7955,
+            nome: 'Brownies da Ana',
+            contatos: [
+              { canal: 'whatsapp', rotulo: 'WhatsApp', link: linkWhatsApp },
+              { canal: 'telefone', rotulo: 'Ligar', link: 'tel:+5586988880000' },
+            ],
+          },
+        ]}
+      />,
+    )
+
+    fireEvent.click(screen.getByTitle('Brownies da Ana'))
+
+    const whatsapp = await screen.findByRole('link', { name: 'WhatsApp' })
+    expect(whatsapp).toHaveAttribute('href', linkWhatsApp)
+    expect(whatsapp).toHaveAttribute('target', '_blank')
+    expect(screen.getByRole('link', { name: 'Ligar' })).toHaveAttribute(
+      'href',
+      'tel:+5586988880000',
+    )
+  })
+
+  it('esconde o botão do contato que o vendedor não cadastrou', async () => {
+    render(
+      <MapaPage
+        marcadores={[
+          {
+            id: 'a',
+            latitude: -5.0577,
+            longitude: -42.7955,
+            nome: 'Café do Leo',
+            contatos: [{ canal: 'telefone', rotulo: 'Ligar', link: 'tel:+5586988880000' }],
+          },
+        ]}
+      />,
+    )
+
+    fireEvent.click(screen.getByTitle('Café do Leo'))
+
+    expect(await screen.findByRole('link', { name: 'Ligar' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'WhatsApp' })).not.toBeInTheDocument()
+  })
+})
+
+describe('MapaPage: link para o perfil (US10)', () => {
+  it('o balão tem o link "Ver perfil" para o vendedor certo', async () => {
+    render(
+      <MapaPage
+        marcadores={[
+          { id: 'v1', latitude: -5.0577, longitude: -42.7955, nome: 'Brownies da Ana' },
+          { id: 'v2', latitude: -5.058, longitude: -42.796, nome: 'Café do Leo' },
+        ]}
+      />,
+    )
+
+    fireEvent.click(screen.getByTitle('Café do Leo'))
+
+    expect(await screen.findByRole('link', { name: 'Ver perfil' })).toHaveAttribute(
+      'href',
+      '/vendedor/v2',
+    )
   })
 })

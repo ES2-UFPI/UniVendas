@@ -1,4 +1,5 @@
 import type { LatLng } from '../../../core/localizacaoService'
+import type { Contato } from '../../vendedores/domain/Contato'
 
 /** Sem sinal por 30 minutos, o servidor desliga o vendedor (RN16). */
 export const LIMITE_SEM_SINAL_MS = 30 * 60 * 1000
@@ -13,6 +14,8 @@ export class Presenca {
   readonly pontoEscolhido: boolean
   readonly referencia: string | null
   readonly ultimoSinalEm: Date
+  /** Contatos do vendedor, para os botões do balão (US07). Pode vir vazio. */
+  readonly contatos: Contato[]
 
   constructor(
     vendedorId: string,
@@ -21,6 +24,7 @@ export class Presenca {
     pontoEscolhido: boolean,
     referencia: string | null,
     ultimoSinalEm: Date,
+    contatos: Contato[] = [],
   ) {
     this.vendedorId = vendedorId
     this.nomeVendedor = nomeVendedor
@@ -28,6 +32,7 @@ export class Presenca {
     this.pontoEscolhido = pontoEscolhido
     this.referencia = referencia
     this.ultimoSinalEm = ultimoSinalEm
+    this.contatos = contatos
   }
 
   /**
