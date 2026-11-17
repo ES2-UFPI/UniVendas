@@ -424,7 +424,7 @@ describe('usePainelVendedorViewModel', () => {
       act(() => result.current.alterarReferencia('RU'))
 
       await act(() => result.current.ligar())
-      expect(lerMarcaPresenca('u1')).toEqual({ referencia: 'RU' })
+      expect(lerMarcaPresenca('u1')).toEqual({ referencia: 'RU', ponto: null })
 
       await act(() => result.current.desligar())
       expect(lerMarcaPresenca('u1')).toBeNull()
@@ -447,6 +447,85 @@ describe('usePainelVendedorViewModel', () => {
       act(() => lista.mudou([]))
       expect(result.current.ativo).toBe(false)
       expect(result.current.erro).toContain('desligada')
+    })
+  })
+
+  describe('ponto fixo no mapa (RN14)', () => {
+    const ponto = { latitude: -5.058, longitude: -42.796 }
+
+    it('liga com o ponto escolhido e o lembra no aparelho', async () => {
+      entrarComo('u1')
+      const { repositorio, localizacao, registrar } = falsos()
+      const { result } = renderHook(() => usePainelVendedorViewModel({ repositorio, localizacao }))
+
+      act(() => result.current.escolherPonto(ponto))
+      await act(() => result.current.ligar())
+
+      expect(registrar).toHaveBeenCalledWith(posicao, ponto, '')
+      expect(lerMarcaPresenca('u1')).toEqual({ referencia: '', ponto })
+    })
+
+    it('mostra o erro do servidor quando o ponto está fora do campus', async () => {
+      const registrar = vi
+        .fn()
+        .mockRejectedValue(new Falha('Escolha um ponto dentro do campus.', 'ponto-fora-do-campus'))
+      const { repositorio, localizacao } = falsos(registrar)
+      const { result } = renderHook(() => usePainelVendedorViewModel({ repositorio, localizacao }))
+
+      act(() => result.current.escolherPonto({ latitude: -5.1, longitude: -42.9 }))
+      await act(() => result.current.ligar())
+
+      expect(result.current.ativo).toBe(false)
+      expect(result.current.erro).toBe('Escolha um ponto dentro do campus.')
+    })
+
+    it('manda o mesmo ponto nos sinais, mesmo com o vendedor andando', async () => {
+      vi.useFakeTimers()
+      const { repositorio, localizacao, enviarSinal, leituras } = falsos()
+      const { result } = renderHook(() => usePainelVendedorViewModel({ repositorio, localizacao }))
+      act(() => result.current.escolherPonto(ponto))
+      await act(() => result.current.ligar())
+
+      const andou = aoNorte(30)
+      await act(async () => leituras.nova(andou))
+
+      expect(enviarSinal).toHaveBeenCalledWith(andou, ponto, '')
+    })
+
+    it('não troca o ponto com a presença ligada, e desligar volta à posição real', async () => {
+      const { repositorio, localizacao } = falsos()
+      const { result } = renderHook(() => usePainelVendedorViewModel({ repositorio, localizacao }))
+      act(() => result.current.escolherPonto(ponto))
+      await act(() => result.current.ligar())
+
+      act(() => result.current.escolherPonto({ latitude: -5.059, longitude: -42.797 }))
+      expect(result.current.ponto).toEqual(ponto)
+
+      await act(() => result.current.desligar())
+      expect(result.current.ponto).toBeNull()
+    })
+
+    it('ao abrir com a presença num ponto fixo, recupera o ponto', async () => {
+      const noPonto = new Presenca('v1', 'Ana', ponto, true, null, new Date())
+      const minhaPresenca = vi.fn().mockResolvedValue(noPonto)
+      const { repositorio, localizacao } = falsos(undefined, undefined, undefined, minhaPresenca)
+
+      const { result } = renderHook(() => usePainelVendedorViewModel({ repositorio, localizacao }))
+
+      await waitFor(() => expect(result.current.ativo).toBe(true))
+      expect(result.current.ponto).toEqual(ponto)
+    })
+
+    it('religa sozinho no ponto que estava lembrado', async () => {
+      entrarComo('u1')
+      lembrarPresenca('u1', 'RU', ponto)
+      const { repositorio, localizacao, registrar } = falsos()
+
+      const { result } = renderHook(() => usePainelVendedorViewModel({ repositorio, localizacao }))
+
+      await waitFor(() => expect(result.current.ativo).toBe(true))
+      expect(registrar).toHaveBeenCalledWith(posicao, ponto, 'RU')
+      expect(result.current.ponto).toEqual(ponto)
     })
   })
 })

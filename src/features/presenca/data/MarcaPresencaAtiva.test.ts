@@ -9,7 +9,18 @@ afterEach(() => {
 describe('MarcaPresencaAtiva', () => {
   it('lembra a referência de quem ligou', () => {
     lembrarPresenca('u1', 'em frente ao RU')
-    expect(lerMarcaPresenca('u1')).toEqual({ referencia: 'em frente ao RU' })
+    expect(lerMarcaPresenca('u1')).toEqual({ referencia: 'em frente ao RU', ponto: null })
+  })
+
+  it('lembra o ponto fixo escolhido no mapa (RN14)', () => {
+    const ponto = { latitude: -5.058, longitude: -42.796 }
+    lembrarPresenca('u1', 'RU', ponto)
+    expect(lerMarcaPresenca('u1')).toEqual({ referencia: 'RU', ponto })
+  })
+
+  it('lê a marca antiga, sem ponto, como posição real', () => {
+    localStorage.setItem('univendas:presenca-ativa:u1', JSON.stringify({ referencia: 'RU' }))
+    expect(lerMarcaPresenca('u1')).toEqual({ referencia: 'RU', ponto: null })
   })
 
   it('devolve null para quem não ligou', () => {

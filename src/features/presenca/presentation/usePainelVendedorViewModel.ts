@@ -37,13 +37,16 @@ interface Opcoes {
  * Se o servidor desligar enquanto o painel está aberto (RN15, RN16), mostra o aviso.
  * Ao ligar, lê a posição do celular e chama o `PresencaRepository`; ao desligar, volta ao estado inicial.
  * Enquanto está ativo, acompanha o GPS e renova o sinal a cada 2 minutos ou 25 m (RN13).
- * O ponto fixo no mapa entra na próxima tarefa.
+ * O vendedor pode escolher um ponto fixo no mapa (RN14): o marcador fica nele, e não na posição do
+ * celular. O servidor recusa ponto fora do campus.
  */
 export function usePainelVendedorViewModel({ repositorio, localizacao }: Opcoes = {}) {
   const [ativo, setAtivo] = useState(false)
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [referencia, setReferencia] = useState('')
+  // Ponto fixo escolhido no mapa (RN14); null = o marcador mostra a posição real do celular.
+  const [ponto, setPonto] = useState<LatLng | null>(null)
   const usuarioId = useSessaoStore((s) => s.usuario?.id ?? null)
 
   // O estado `carregando` só muda no próximo render; a ref barra o segundo toque que chega antes disso.
@@ -56,18 +59,19 @@ export function usePainelVendedorViewModel({ repositorio, localizacao }: Opcoes 
     const repo = repositorio ?? new SupabasePresencaRepository()
 
     // Religa sozinho: o vendedor tinha ligado e não desligou de propósito, mas o servidor apagou a presença.
-    async function religar(referenciaSalva: string) {
+    async function religar(referenciaSalva: string, pontoSalvo: LatLng | null) {
       emAndamento.current = true
       setCarregando(true)
       try {
         const real = await (localizacao ?? new LocalizacaoService()).posicaoAtual()
         if (cancelado) return
-        const resultado = await repo.registrar(real, null, referenciaSalva)
+        const resultado = await repo.registrar(real, pontoSalvo, referenciaSalva)
         if (cancelado) return
         if (resultado === ResultadoRegistro.ATIVO) {
           ultimoSinal.current = { posicao: real, em: new Date() }
           setAtivo(true)
           setReferencia(referenciaSalva)
+          setPonto(pontoSalvo)
         } else {
           if (usuarioId) esquecerPresenca(usuarioId)
           setErro(MENSAGEM_NAO_RELIGOU)
@@ -91,10 +95,12 @@ export function usePainelVendedorViewModel({ repositorio, localizacao }: Opcoes 
           ultimoSinal.current = { posicao: presenca.posicao, em: presenca.ultimoSinalEm }
           setAtivo(true)
           setReferencia(presenca.referencia ?? '')
+          // Se a presença usa um ponto fixo, os próximos sinais precisam mandar o mesmo ponto.
+          setPonto(presenca.pontoEscolhido ? presenca.posicao : null)
           return
         }
         const marca = usuarioId ? lerMarcaPresenca(usuarioId) : null
-        if (marca && !emAndamento.current) await religar(marca.referencia)
+        if (marca && !emAndamento.current) await religar(marca.referencia, marca.ponto)
       })
       .catch(() => {})
     return () => {
@@ -146,7 +152,7 @@ export function usePainelVendedorViewModel({ repositorio, localizacao }: Opcoes 
 
       enviando = true
       try {
-        const resultado = await repo.enviarSinal(posicao, null, referencia)
+        const resultado = await repo.enviarSinal(posicao, ponto, referencia)
         if (encerrado) return
         if (resultado === ResultadoRegistro.ATIVO) {
           ultimoSinal.current = { posicao, em: agora }
@@ -175,7 +181,7 @@ export function usePainelVendedorViewModel({ repositorio, localizacao }: Opcoes 
       parar()
       clearInterval(relogio)
     }
-  }, [ativo, repositorio, localizacao, referencia])
+  }, [ativo, repositorio, localizacao, referencia, ponto])
 
   /** Liga a presença. Devolve true se o vendedor ficou ativo; o motivo da falha fica em `erro`. */
   async function ligar(): Promise<boolean> {
@@ -194,13 +200,13 @@ export function usePainelVendedorViewModel({ repositorio, localizacao }: Opcoes 
       const real = await (localizacao ?? new LocalizacaoService()).posicaoAtual()
       const resultado = await (repositorio ?? new SupabasePresencaRepository()).registrar(
         real,
-        null,
+        ponto,
         referencia,
       )
 
       if (resultado === ResultadoRegistro.ATIVO) {
         ultimoSinal.current = { posicao: real, em: new Date() }
-        if (usuarioId) lembrarPresenca(usuarioId, referencia)
+        if (usuarioId) lembrarPresenca(usuarioId, referencia, ponto)
         setAtivo(true)
         return true
       }
@@ -230,6 +236,7 @@ export function usePainelVendedorViewModel({ repositorio, localizacao }: Opcoes 
       if (usuarioId) esquecerPresenca(usuarioId)
       setAtivo(false)
       setReferencia('')
+      setPonto(null)
       return true
     } catch (e) {
       setErro(e instanceof Falha ? e.mensagem : MENSAGEM_DESLIGAR)
@@ -246,6 +253,11 @@ export function usePainelVendedorViewModel({ repositorio, localizacao }: Opcoes 
     erro,
     referencia,
     alterarReferencia: setReferencia,
+    ponto,
+    /** Escolhe o ponto fixo (só antes de ligar). `null` volta a mostrar a posição real. */
+    escolherPonto: (novo: LatLng | null) => {
+      if (!ativo && !emAndamento.current) setPonto(novo)
+    },
     ligar,
     desligar,
   }
