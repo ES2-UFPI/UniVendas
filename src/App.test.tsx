@@ -22,6 +22,7 @@ const presencaRepositorio = {
   registrar: vi.fn(),
   enviarSinal: vi.fn(),
   desligar: vi.fn(),
+  minhaPresenca: vi.fn().mockResolvedValue(null),
   listarAtivos: vi.fn().mockResolvedValue([]),
   observarAtivos: vi.fn(() => () => {}),
 } as PresencaRepository
@@ -29,6 +30,7 @@ const presencaRepositorio = {
 // Repositório de vendedores falso: o perfil não pode buscar no Supabase de verdade.
 const vendedorRepositorio = {
   criar: vi.fn(),
+  buscarDoUsuario: vi.fn(),
   buscarPerfil: vi.fn((id: string) =>
     Promise.resolve(
       new PerfilVendedor(new VendedorAmbulante(id, 'u2', 'Brownies da Ana'), [], [], false),
@@ -120,6 +122,20 @@ describe('App', () => {
   it('protege também o perfil do vendedor', () => {
     abrir('/vendedor/v1', null)
     expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
+  })
+
+  it('protege também a tela "Meus itens"', () => {
+    abrir('/meus-itens', null)
+    expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
+  })
+
+  it('o menu leva à tela "Meus itens" (US08)', () => {
+    abrir('/', ana)
+    expect(screen.getByRole('link', { name: 'Meus itens' })).toHaveAttribute('href', '/meus-itens')
+    cleanup()
+
+    abrir('/meus-itens', ana)
+    expect(screen.getByRole('heading', { name: 'Meus itens' })).toBeInTheDocument()
   })
 
   it('endereço desconhecido volta para o mapa', () => {

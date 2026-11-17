@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Categoria } from './Categoria'
-import { lerPreco, validarItem, type DadosItem } from './validacoesItem'
+import { formatarPreco, lerPreco, validarItem, type DadosItem } from './validacoesItem'
 
 // Alimentação > Doces > Brownie, como nos dados iniciais da tabela categorias.
 const categorias: Categoria[] = [
@@ -31,6 +31,16 @@ describe('lerPreco', () => {
 
   it.each(['', 'abc', '5,555', '1.000,00', '5,'])('não consegue ler "%s"', (texto) => {
     expect(lerPreco(texto)).toBeNull()
+  })
+})
+
+describe('formatarPreco', () => {
+  it.each([
+    [5.5, 'R$\u00a05,50'],
+    [0, 'R$\u00a00,00'],
+    [12, 'R$\u00a012,00'],
+  ])('mostra %d como %s', (valor, texto) => {
+    expect(formatarPreco(valor)).toBe(texto)
   })
 })
 

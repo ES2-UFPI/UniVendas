@@ -29,7 +29,15 @@ export interface PresencaRepository {
 
   enviarSinal(real: LatLng, ponto: LatLng | null, referencia: string): Promise<ResultadoRegistro>
 
+  /** Desliga a presença do vendedor logado: ele some do mapa. Lança `Falha` se não conseguir. */
   desligar(): Promise<void>
+
+  /**
+   * Devolve a presença do vendedor logado, para o painel abrir já ativo.
+   * É `null` se ele não ligou, não é vendedor, está sem sessão ou está há mais de 30 minutos sem sinal.
+   * Lança `Falha` se a leitura falhar.
+   */
+  minhaPresenca(): Promise<Presenca | null>
 
   /** Lista os vendedores ativos agora (com sinal há menos de 30 minutos). Lança `Falha` se não conseguir. */
   listarAtivos(): Promise<Presenca[]>

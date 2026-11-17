@@ -167,6 +167,34 @@ describe('SupabaseItemRepository.editar', () => {
   })
 })
 
+describe('SupabaseItemRepository.alternarDisponibilidade', () => {
+  it('muda só a coluna disponivel do item pelo id e devolve o item salvo (RN08)', async () => {
+    const { repo, consulta } = clienteFalso({ data: { ...linha, disponivel: false }, error: null })
+
+    const salvo = await repo.alternarDisponibilidade('i1', false)
+
+    expect(consulta.update).toHaveBeenCalledWith({ disponivel: false })
+    expect(consulta.eq).toHaveBeenCalledWith('id', 'i1')
+    expect(salvo.disponivel).toBe(false)
+  })
+
+  it('avisa quando o item não existe ou é de outro vendedor (a RLS esconde a linha)', async () => {
+    const { repo } = clienteFalso({ data: null, error: { code: 'PGRST116' } })
+
+    const falha = await falhaDe(repo.alternarDisponibilidade('i9', false))
+
+    expect(falha.codigo).toBe('item-nao-encontrado')
+  })
+
+  it('lança Falha quando o banco dá erro', async () => {
+    const { repo } = clienteFalso({ data: null, error: { code: '500' } })
+
+    const falha = await falhaDe(repo.alternarDisponibilidade('i1', true))
+
+    expect(falha.codigo).toBe('500')
+  })
+})
+
 describe('SupabaseItemRepository.remover', () => {
   it('apaga o item pelo id', async () => {
     const { repo, consulta } = clienteFalso({ data: [{ id: 'i1' }], error: null })
@@ -221,5 +249,34 @@ describe('SupabaseItemRepository.enviarFoto', () => {
     const falha = await falhaDe(repo.enviarFoto('u1', foto))
 
     expect(falha.codigo).toBe('foto-nao-enviada')
+  })
+})
+
+describe('SupabaseItemRepository.listarCategorias', () => {
+  it('busca a árvore de categorias em ordem alfabética', async () => {
+    const { repo, consulta, from } = clienteFalso({
+      data: [
+        { id: 3, nome: 'Doces', categoria_pai_id: 1, folha: false },
+        { id: 7, nome: 'Brownie', categoria_pai_id: 3, folha: true },
+      ],
+      error: null,
+    })
+
+    const categorias = await repo.listarCategorias()
+
+    expect(from).toHaveBeenCalledWith('categorias')
+    expect(consulta.order).toHaveBeenCalledWith('nome')
+    expect(categorias).toEqual([
+      { id: 3, nome: 'Doces', categoriaPaiId: 1, folha: false },
+      { id: 7, nome: 'Brownie', categoriaPaiId: 3, folha: true },
+    ])
+  })
+
+  it('lança Falha quando a busca dá erro', async () => {
+    const { repo } = clienteFalso({ data: null, error: { code: '500' } })
+
+    const falha = await falhaDe(repo.listarCategorias())
+
+    expect(falha.mensagem).toBe('Não foi possível carregar as categorias. Tente de novo.')
   })
 })

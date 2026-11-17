@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { Falha } from '../../../core/falha'
 import { SupabaseService } from '../../../core/supabaseService'
 import type { Database } from '../../../types/database.types'
+import type { Categoria } from '../domain/Categoria'
 import { Item } from '../domain/Item'
 import type { ItemRepository } from '../domain/ItemRepository'
 
@@ -110,6 +111,19 @@ export class SupabaseItemRepository implements ItemRepository {
     return paraItem(data)
   }
 
+  async alternarDisponibilidade(itemId: string, disponivel: boolean): Promise<Item> {
+    // Só a coluna `disponivel` muda; o resto do item fica como está.
+    const { data, error } = await this.client
+      .from('itens')
+      .update({ disponivel })
+      .eq('id', itemId)
+      .select()
+      .single()
+
+    if (error || !data) throw paraFalha(error ?? {})
+    return paraItem(data)
+  }
+
   async remover(itemId: string): Promise<void> {
     // O select devolve as linhas apagadas: a RLS não dá erro com item de outro vendedor, só apaga zero linhas.
     const { data, error } = await this.client.from('itens').delete().eq('id', itemId).select('id')
@@ -121,6 +135,23 @@ export class SupabaseItemRepository implements ItemRepository {
       )
     }
     if (!data || data.length === 0) throw ITEM_NAO_ENCONTRADO
+  }
+
+  async listarCategorias(): Promise<Categoria[]> {
+    const { data, error } = await this.client.from('categorias').select('*').order('nome')
+
+    if (error || !data) {
+      throw new Falha(
+        'Não foi possível carregar as categorias. Tente de novo.',
+        error?.code ?? 'desconhecido',
+      )
+    }
+    return data.map((c) => ({
+      id: c.id,
+      nome: c.nome,
+      categoriaPaiId: c.categoria_pai_id,
+      folha: c.folha,
+    }))
   }
 
   async enviarFoto(perfilId: string, foto: Blob): Promise<string> {
