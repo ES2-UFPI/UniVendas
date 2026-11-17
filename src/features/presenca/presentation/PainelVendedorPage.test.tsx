@@ -17,7 +17,12 @@ function falsos(
   minhaPresenca = vi.fn().mockResolvedValue(null),
 ) {
   return {
-    repositorio: { registrar, desligar, minhaPresenca } as unknown as PresencaRepository,
+    repositorio: {
+      registrar,
+      desligar,
+      minhaPresenca,
+      observarAtivos: vi.fn(() => () => {}),
+    } as unknown as PresencaRepository,
     localizacao: { posicaoAtual, acompanhar: vi.fn(() => () => {}) } as Pick<
       LocalizacaoService,
       'posicaoAtual' | 'acompanhar'
