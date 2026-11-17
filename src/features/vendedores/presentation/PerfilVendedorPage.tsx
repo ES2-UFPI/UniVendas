@@ -1,7 +1,6 @@
+import { ItemDoPerfil } from '../../itens/presentation/ItemDoPerfil'
 import type { VendedorRepository } from '../domain/VendedorRepository'
 import { usePerfilVendedorViewModel } from './usePerfilVendedorViewModel'
-
-const formatoPreco = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 
 interface PerfilVendedorPageProps {
   /** Id do vendedor, vindo da rota `/vendedor/:id`. */
@@ -92,13 +91,10 @@ export function PerfilVendedorPage({ id, repositorio }: PerfilVendedorPageProps)
         {itens.length === 0 ? (
           <p className="text-sm text-gray-600">Este vendedor ainda não cadastrou itens.</p>
         ) : (
-          // O jeito de mostrar o item esgotado (riscado e com a marca) vem na #119.
+          // Os esgotados já vêm depois dos disponíveis (RN09); o `ItemDoPerfil` risca e marca "Esgotado".
           <ul className="flex flex-col divide-y divide-gray-200">
             {itens.map((item) => (
-              <li key={item.id} className="flex justify-between py-2">
-                <span className="text-gray-900">{item.nome}</span>
-                <span className="text-gray-700">{formatoPreco.format(item.preco)}</span>
-              </li>
+              <ItemDoPerfil key={item.id} item={item} />
             ))}
           </ul>
         )}
