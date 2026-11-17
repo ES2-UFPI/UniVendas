@@ -167,6 +167,34 @@ describe('SupabaseItemRepository.editar', () => {
   })
 })
 
+describe('SupabaseItemRepository.alternarDisponibilidade', () => {
+  it('muda só a coluna disponivel do item pelo id e devolve o item salvo (RN08)', async () => {
+    const { repo, consulta } = clienteFalso({ data: { ...linha, disponivel: false }, error: null })
+
+    const salvo = await repo.alternarDisponibilidade('i1', false)
+
+    expect(consulta.update).toHaveBeenCalledWith({ disponivel: false })
+    expect(consulta.eq).toHaveBeenCalledWith('id', 'i1')
+    expect(salvo.disponivel).toBe(false)
+  })
+
+  it('avisa quando o item não existe ou é de outro vendedor (a RLS esconde a linha)', async () => {
+    const { repo } = clienteFalso({ data: null, error: { code: 'PGRST116' } })
+
+    const falha = await falhaDe(repo.alternarDisponibilidade('i9', false))
+
+    expect(falha.codigo).toBe('item-nao-encontrado')
+  })
+
+  it('lança Falha quando o banco dá erro', async () => {
+    const { repo } = clienteFalso({ data: null, error: { code: '500' } })
+
+    const falha = await falhaDe(repo.alternarDisponibilidade('i1', true))
+
+    expect(falha.codigo).toBe('500')
+  })
+})
+
 describe('SupabaseItemRepository.remover', () => {
   it('apaga o item pelo id', async () => {
     const { repo, consulta } = clienteFalso({ data: [{ id: 'i1' }], error: null })

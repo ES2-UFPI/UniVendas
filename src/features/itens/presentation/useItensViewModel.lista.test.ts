@@ -15,17 +15,24 @@ function falsos({
   doUsuario = vi.fn().mockResolvedValue(vendedor),
   listar = vi.fn().mockResolvedValue([brownie, cafe]),
   remover = vi.fn().mockResolvedValue(undefined),
+  alternarDisponibilidade = vi.fn((id: string, disponivel: boolean) =>
+    Promise.resolve(
+      new Item(id, 'v1', 7, id === 'i1' ? 'Brownie' : 'Café', 5.5, '', null, disponivel),
+    ),
+  ),
 } = {}) {
   return {
     vendedores: { buscarDoUsuario: doUsuario } as unknown as VendedorRepository,
     repositorio: {
       listar,
       remover,
+      alternarDisponibilidade,
       listarCategorias: vi.fn().mockResolvedValue([]),
     } as unknown as ItemRepository,
     doUsuario,
     listar,
     remover,
+    alternarDisponibilidade,
   }
 }
 
@@ -107,5 +114,55 @@ describe('useItensViewModel: remover', () => {
     expect(ok).toBe(false)
     expect(result.current.itens).toHaveLength(2)
     expect(result.current.erro).toBe('Este item não existe mais ou não é seu.')
+  })
+})
+
+describe('useItensViewModel: disponível e esgotado (RN08)', () => {
+  async function aberto(f = falsos()) {
+    const hook = renderHook(() => useItensViewModel({ ...f, perfilId: 'u1' }))
+    await waitFor(() => expect(hook.result.current.carregando).toBe(false))
+    return { ...hook, f }
+  }
+
+  it('marca como esgotado o item disponível e atualiza a lista', async () => {
+    const { result, f } = await aberto()
+
+    let deuCerto = false
+    await act(async () => {
+      deuCerto = await result.current.alternarDisponibilidade(brownie)
+    })
+
+    expect(deuCerto).toBe(true)
+    expect(f.alternarDisponibilidade).toHaveBeenCalledWith('i1', false)
+    expect(result.current.itens.find((i) => i.id === 'i1')?.disponivel).toBe(false)
+    expect(result.current.itens.find((i) => i.id === 'i2')?.disponivel).toBe(true)
+  })
+
+  it('volta a disponível o item esgotado', async () => {
+    const esgotado = new Item('i1', 'v1', 7, 'Brownie', 5.5, '', null, false)
+    const { result, f } = await aberto(falsos({ listar: vi.fn().mockResolvedValue([esgotado]) }))
+
+    await act(async () => {
+      await result.current.alternarDisponibilidade(esgotado)
+    })
+
+    expect(f.alternarDisponibilidade).toHaveBeenCalledWith('i1', true)
+    expect(result.current.itens[0].disponivel).toBe(true)
+  })
+
+  it('mostra o erro e mantém o item como estava quando não consegue salvar', async () => {
+    const falha = new Falha('Só o dono pode mudar os itens deste vendedor.', 'sem-permissao')
+    const { result } = await aberto(
+      falsos({ alternarDisponibilidade: vi.fn().mockRejectedValue(falha) }),
+    )
+
+    let deuCerto = true
+    await act(async () => {
+      deuCerto = await result.current.alternarDisponibilidade(brownie)
+    })
+
+    expect(deuCerto).toBe(false)
+    expect(result.current.erro).toBe('Só o dono pode mudar os itens deste vendedor.')
+    expect(result.current.itens.find((i) => i.id === 'i1')?.disponivel).toBe(true)
   })
 })

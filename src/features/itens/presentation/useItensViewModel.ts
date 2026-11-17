@@ -132,6 +132,25 @@ export function useItensViewModel({
     }
   }
 
+  /**
+   * Troca o item entre disponível e esgotado (RN08) e atualiza a lista.
+   * Devolve true se deu certo; senão, o motivo fica em `erro` e o item continua como estava.
+   */
+  async function alternarDisponibilidade(item: Item): Promise<boolean> {
+    setErro(null)
+    try {
+      const salvo = await (repositorio ?? new SupabaseItemRepository()).alternarDisponibilidade(
+        item.id,
+        !item.disponivel,
+      )
+      setItens((atual) => atual.map((i) => (i.id === salvo.id ? salvo : i)))
+      return true
+    } catch (e) {
+      setErro(mensagemDe(e, 'Não foi possível mudar o item. Tente de novo.'))
+      return false
+    }
+  }
+
   function abrirFormulario(item: Item | null) {
     setEditando(item)
     setDados(
@@ -235,6 +254,7 @@ export function useItensViewModel({
     semPerfil,
     erro,
     remover,
+    alternarDisponibilidade,
     formularioAberto,
     editando,
     novo,

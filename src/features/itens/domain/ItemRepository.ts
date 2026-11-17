@@ -17,6 +17,12 @@ export interface ItemRepository {
 
   remover(itemId: string): Promise<void>
 
+  /**
+   * Marca o item como disponível (`true`) ou esgotado (`false`) e devolve o item salvo (RN08).
+   * Recebe o estado novo, e não "inverter", para repetir o pedido não desfazer a troca.
+   */
+  alternarDisponibilidade(itemId: string, disponivel: boolean): Promise<Item>
+
   /** A árvore de categorias, em ordem alfabética; o formulário só oferece as folhas (RN07). */
   listarCategorias(): Promise<Categoria[]>
 

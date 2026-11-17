@@ -18,6 +18,9 @@ function abrir({
   doUsuario = vi.fn().mockResolvedValue(vendedor),
   listar = vi.fn().mockResolvedValue([brownie, cafe]),
   remover = vi.fn().mockResolvedValue(undefined),
+  alternarDisponibilidade = vi.fn((id: string, disponivel: boolean) =>
+    Promise.resolve(new Item(id, 'v1', 7, 'Brownie', 5.5, '', null, disponivel)),
+  ),
 } = {}) {
   render(
     <MemoryRouter>
@@ -28,13 +31,14 @@ function abrir({
           {
             listar,
             remover,
+            alternarDisponibilidade,
             listarCategorias: vi.fn().mockResolvedValue([]),
           } as unknown as ItemRepository
         }
       />
     </MemoryRouter>,
   )
-  return { remover }
+  return { remover, alternarDisponibilidade }
 }
 
 describe('MeusItensPage', () => {
@@ -102,6 +106,50 @@ describe('MeusItensPage', () => {
       'Este item não existe mais ou não é seu.',
     )
     expect(screen.getByText('Brownie')).toBeInTheDocument()
+  })
+})
+
+describe('MeusItensPage: disponível e esgotado (RN08)', () => {
+  it('um toque marca o item como esgotado e o botão passa a oferecer "disponível"', async () => {
+    const { alternarDisponibilidade } = abrir()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Marcar como esgotado: Brownie' }))
+
+    expect(await screen.findByText('Esgotado')).toBeInTheDocument()
+    expect(alternarDisponibilidade).toHaveBeenCalledWith('i1', false)
+    expect(
+      screen.getByRole('button', { name: 'Marcar como disponível: Brownie' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Marcar como esgotado: Café' })).toBeInTheDocument()
+  })
+
+  it('um segundo toque volta o item a disponível', async () => {
+    const { alternarDisponibilidade } = abrir()
+    fireEvent.click(await screen.findByRole('button', { name: 'Marcar como esgotado: Brownie' }))
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Marcar como disponível: Brownie' }))
+
+    await waitFor(() => expect(alternarDisponibilidade).toHaveBeenLastCalledWith('i1', true))
+    expect(
+      await screen.findByRole('button', { name: 'Marcar como esgotado: Brownie' }),
+    ).toBeEnabled()
+    expect(screen.queryByText('Esgotado')).not.toBeInTheDocument()
+  })
+
+  it('mostra o erro e mantém o item quando não consegue salvar', async () => {
+    abrir({
+      alternarDisponibilidade: vi
+        .fn()
+        .mockRejectedValue(
+          new Falha('Este item não existe mais ou não é seu.', 'item-nao-encontrado'),
+        ),
+    })
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Marcar como esgotado: Brownie' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Este item não existe mais')
+    expect(screen.queryByText('Esgotado')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Marcar como esgotado: Brownie' })).toBeEnabled()
   })
 })
 
