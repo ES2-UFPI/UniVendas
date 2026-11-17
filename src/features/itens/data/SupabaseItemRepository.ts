@@ -111,6 +111,19 @@ export class SupabaseItemRepository implements ItemRepository {
     return paraItem(data)
   }
 
+  async alternarDisponibilidade(itemId: string, disponivel: boolean): Promise<Item> {
+    // Só a coluna `disponivel` muda; o resto do item fica como está.
+    const { data, error } = await this.client
+      .from('itens')
+      .update({ disponivel })
+      .eq('id', itemId)
+      .select()
+      .single()
+
+    if (error || !data) throw paraFalha(error ?? {})
+    return paraItem(data)
+  }
+
   async remover(itemId: string): Promise<void> {
     // O select devolve as linhas apagadas: a RLS não dá erro com item de outro vendedor, só apaga zero linhas.
     const { data, error } = await this.client.from('itens').delete().eq('id', itemId).select('id')

@@ -193,18 +193,30 @@ function FormularioItem({ vm }: { vm: ViewModel }) {
   )
 }
 
-/** Uma linha da lista: foto, nome, preço, o botão de editar e o de remover, que pede confirmação. */
+/**
+ * Uma linha da lista: foto, nome, preço, o botão de disponível/esgotado (um toque, RN08),
+ * o de editar e o de remover, que pede confirmação.
+ */
 function LinhaItem({
   item,
   aoEditar,
   aoRemover,
+  aoAlternar,
 }: {
   item: Item
   aoEditar: () => void
   aoRemover: () => Promise<boolean>
+  aoAlternar: () => Promise<boolean>
 }) {
   const [confirmando, setConfirmando] = useState(false)
   const [removendo, setRemovendo] = useState(false)
+  const [alternando, setAlternando] = useState(false)
+
+  async function alternar() {
+    setAlternando(true)
+    await aoAlternar()
+    setAlternando(false)
+  }
 
   async function confirmar() {
     setRemovendo(true)
@@ -227,7 +239,10 @@ function LinhaItem({
         </div>
         <div className="min-w-0 flex-1">
           <p className="break-words font-semibold text-gray-900">{item.nome}</p>
-          <p className="text-sm text-gray-700">{formatarPreco(item.preco)}</p>
+          <p className="text-sm text-gray-700">
+            {formatarPreco(item.preco)}
+            {!item.disponivel && <span className="ml-2 font-medium text-red-700">Esgotado</span>}
+          </p>
         </div>
         {!confirmando && (
           <div className="flex shrink-0 flex-col">
@@ -250,6 +265,18 @@ function LinhaItem({
           </div>
         )}
       </div>
+
+      {!confirmando && (
+        <button
+          type="button"
+          onClick={() => void alternar()}
+          disabled={alternando}
+          aria-label={`${item.disponivel ? 'Marcar como esgotado' : 'Marcar como disponível'}: ${item.nome}`}
+          className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-60"
+        >
+          {item.disponivel ? 'Marcar como esgotado' : 'Marcar como disponível'}
+        </button>
+      )}
 
       {confirmando && (
         <div
@@ -342,6 +369,7 @@ export function MeusItensPage({
               item={item}
               aoEditar={() => vm.editar(item)}
               aoRemover={() => vm.remover(item.id)}
+              aoAlternar={() => vm.alternarDisponibilidade(item)}
             />
           ))}
         </ul>
