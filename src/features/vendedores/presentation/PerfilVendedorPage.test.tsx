@@ -25,6 +25,7 @@ function repositorio(buscarPerfil: VendedorRepository['buscarPerfil']) {
   return {
     criar: vi.fn(),
     buscarDoUsuario: vi.fn(),
+    atualizarPerfil: vi.fn(),
     buscarPerfil: vi.fn(buscarPerfil),
   } as VendedorRepository
 }

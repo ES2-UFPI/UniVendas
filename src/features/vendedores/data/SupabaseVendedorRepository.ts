@@ -116,6 +116,42 @@ export class SupabaseVendedorRepository implements VendedorRepository {
     return VendedorFactory.criar(linha)
   }
 
+  async atualizarPerfil(vendedor: Vendedor, contatos: Contato[], foto?: Blob): Promise<Vendedor> {
+    // Sem contato o perfil não vale (RN06); apagar todos pela lista vazia seria um erro.
+    if (contatos.length === 0) {
+      throw new Falha('Informe ao menos um contato.', 'sem-contatos')
+    }
+
+    const caminhoFoto = foto ? await this.enviarFoto(vendedor.perfilId, foto) : null
+    // Só as colunas que o dono pode mudar. Sem foto nova, a foto_url nem entra no update.
+    const dados = {
+      nome_exibicao: vendedor.nomeExibicao,
+      descricao: vendedor.descricao || null,
+      ...(caminhoFoto && {
+        foto_url: this.client.storage.from(BUCKET_FOTOS).getPublicUrl(caminhoFoto).data.publicUrl,
+      }),
+    }
+
+    const { data: linha, error } = await this.client
+      .from('vendedores')
+      .update(dados)
+      .eq('id', vendedor.id)
+      .select()
+      .single()
+
+    if (error || !linha) {
+      await this.apagarFoto(caminhoFoto)
+      // PGRST116: o update não achou a linha, porque não existe ou a RLS escondeu (perfil de outra pessoa).
+      if (error?.code === 'PGRST116') {
+        throw new Falha('Este perfil não existe ou não é seu.', 'perfil-nao-encontrado')
+      }
+      throw paraFalha(error ?? {})
+    }
+
+    await this.salvarContatos(linha.id, contatos)
+    return VendedorFactory.criar(linha)
+  }
+
   async buscarDoUsuario(perfilId: string): Promise<Vendedor | null> {
     const { data, error } = await this.client
       .from('vendedores')
@@ -130,6 +166,37 @@ export class SupabaseVendedorRepository implements VendedorRepository {
       )
     }
     return data ? VendedorFactory.criar(data) : null
+  }
+
+  /**
+   * Deixa os contatos do vendedor iguais à lista. O banco só deixa mudar o `valor` de um contato
+   * (trocar o canal é apagar e criar), então cada canal é atualizado ou, se não existe, criado.
+   * Os canais que saíram da lista são apagados por último, para nunca ficar sem contato (RN06).
+   */
+  private async salvarContatos(vendedorId: string, contatos: Contato[]): Promise<void> {
+    for (const contato of contatos) {
+      const { data: atualizados, error } = await this.client
+        .from('contatos')
+        .update({ valor: contato.valor })
+        .eq('vendedor_id', vendedorId)
+        .eq('canal', contato.canal)
+        .select('id')
+      if (error) throw paraFalha(error)
+
+      if (atualizados.length === 0) {
+        const { error: erroCriar } = await this.client
+          .from('contatos')
+          .insert({ vendedor_id: vendedorId, canal: contato.canal, valor: contato.valor })
+        if (erroCriar) throw paraFalha(erroCriar)
+      }
+    }
+
+    const { error: erroApagar } = await this.client
+      .from('contatos')
+      .delete()
+      .eq('vendedor_id', vendedorId)
+      .not('canal', 'in', `(${contatos.map((c) => c.canal).join(',')})`)
+    if (erroApagar) throw paraFalha(erroApagar)
   }
 
   /** Envia a foto para a pasta do usuário no bucket (fotos/<perfilId>/...) e devolve o caminho. */

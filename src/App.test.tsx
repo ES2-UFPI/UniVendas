@@ -31,6 +31,7 @@ const presencaRepositorio = {
 const vendedorRepositorio = {
   criar: vi.fn(),
   buscarDoUsuario: vi.fn(),
+  atualizarPerfil: vi.fn(),
   buscarPerfil: vi.fn((id: string) =>
     Promise.resolve(
       new PerfilVendedor(new VendedorAmbulante(id, 'u2', 'Brownies da Ana'), [], [], false),
