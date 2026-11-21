@@ -4,6 +4,7 @@ import { ContatoService } from '../../contato/domain/ContatoService'
 import { SupabasePresencaRepository } from '../../presenca/data/SupabasePresencaRepository'
 import type { Presenca } from '../../presenca/domain/Presenca'
 import type { PresencaRepository } from '../../presenca/domain/PresencaRepository'
+import type { VendedorNaLista } from './ListaNoCampus'
 import type { Marcador } from './MapaPage'
 
 const MENSAGEM_PADRAO = 'Não foi possível carregar os vendedores do mapa. Tente de novo.'
@@ -31,10 +32,20 @@ function paraMarcador(presenca: Presenca): Marcador {
   }
 }
 
+function paraVendedorNaLista(presenca: Presenca): VendedorNaLista {
+  return {
+    id: presenca.vendedorId,
+    nome: presenca.nomeVendedor,
+    referencia: presenca.referencia,
+    ultimoSinalEm: presenca.ultimoSinalEm,
+  }
+}
+
 /**
  * ViewModel do mapa (US06) e observador do padrão Observer: faz a carga inicial dos vendedores
  * ativos e se inscreve no `PresencaRepository.observarAtivos`. Cada lista nova atualiza o estado,
  * e o React redesenha os marcadores, que aparecem e somem sem recarregar a página.
+ * A lista de quem está no campus (US13) sai dos mesmos dados, com os de sinal mais recente primeiro.
  */
 export function useMapaViewModel({ repositorio }: Opcoes = {}) {
   const [presencas, setPresencas] = useState<Presenca[]>([])
@@ -86,8 +97,17 @@ export function useMapaViewModel({ repositorio }: Opcoes = {}) {
 
   const marcadores = useMemo(() => presencas.map(paraMarcador), [presencas])
 
+  const vendedores = useMemo(
+    () =>
+      [...presencas]
+        .sort((a, b) => b.ultimoSinalEm.getTime() - a.ultimoSinalEm.getTime())
+        .map(paraVendedorNaLista),
+    [presencas],
+  )
+
   return {
     marcadores,
+    vendedores,
     carregando: repo !== null && carregando,
     erro: repo === null ? MENSAGEM_PADRAO : erroDaBusca,
   }
