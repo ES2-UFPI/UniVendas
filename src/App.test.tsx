@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App, { AppRotas } from './App'
@@ -111,6 +111,15 @@ describe('App', () => {
     expect(screen.getByLabelText('Mapa do campus')).toBeInTheDocument()
     expect(screen.getByText('Ana')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Sair' })).toBeInTheDocument()
+  })
+
+  it('o mapa tem a visão em lista de quem está no campus (US13)', async () => {
+    abrir('/', ana)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lista' }))
+
+    expect(await screen.findByText('Ninguém está no campus agora.')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Mapa do campus')).not.toBeInTheDocument()
   })
 
   it('quem já está logado e abre o login vai para o mapa', () => {

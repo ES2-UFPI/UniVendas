@@ -18,7 +18,7 @@ import { LoginPage } from './features/auth/presentation/LoginPage'
 import { NovaSenhaPage } from './features/auth/presentation/NovaSenhaPage'
 import { MeusItensPage } from './features/itens/presentation/MeusItensPage'
 import { TelaVisitante } from './features/auth/presentation/TelaVisitante'
-import { MapaPage } from './features/mapa/presentation/MapaPage'
+import { VisaoDoCampus } from './features/mapa/presentation/VisaoDoCampus'
 import { useMapaViewModel } from './features/mapa/presentation/useMapaViewModel'
 import type { PresencaRepository } from './features/presenca/domain/PresencaRepository'
 import { PainelVendedorPage } from './features/presenca/presentation/PainelVendedorPage'
@@ -173,7 +173,9 @@ function MeusItens() {
 
 /** O mapa com os vendedores ativos, que aparecem e somem em tempo real (US06). */
 function Mapa({ presencaRepositorio }: { presencaRepositorio?: PresencaRepository }) {
-  const { marcadores, erro } = useMapaViewModel({ repositorio: presencaRepositorio })
+  const { marcadores, vendedores, carregando, erro } = useMapaViewModel({
+    repositorio: presencaRepositorio,
+  })
   return (
     <>
       {erro && (
@@ -181,7 +183,7 @@ function Mapa({ presencaRepositorio }: { presencaRepositorio?: PresencaRepositor
           {erro}
         </p>
       )}
-      <MapaPage marcadores={marcadores} />
+      <VisaoDoCampus marcadores={marcadores} vendedores={vendedores} carregando={carregando} />
     </>
   )
 }
