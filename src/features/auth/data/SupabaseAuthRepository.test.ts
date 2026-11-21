@@ -191,3 +191,103 @@ describe('SupabaseAuthRepository.aoMudarUsuario', () => {
     expect(unsubscribe).toHaveBeenCalled()
   })
 })
+
+describe('SupabaseAuthRepository.enviarLinkDeRecuperacao (US15)', () => {
+  function repositorioCom(resetPasswordForEmail: ReturnType<typeof vi.fn>) {
+    return new SupabaseAuthRepository(
+      { auth: { resetPasswordForEmail } } as unknown as SupabaseClient<Database>,
+      'https://univendas.exemplo.app',
+    )
+  }
+
+  it('pede o link com o e-mail sem espaços e manda voltar para a tela "Nova senha"', async () => {
+    const resetPasswordForEmail = vi.fn().mockResolvedValue({ data: {}, error: null })
+
+    await repositorioCom(resetPasswordForEmail).enviarLinkDeRecuperacao(' ana@ufpi.edu.br ')
+
+    expect(resetPasswordForEmail).toHaveBeenCalledWith('ana@ufpi.edu.br', {
+      redirectTo: 'https://univendas.exemplo.app/nova-senha',
+    })
+  })
+
+  it('avisa quando foram pedidos e-mails demais', async () => {
+    const resetPasswordForEmail = vi.fn().mockResolvedValue({
+      data: null,
+      error: { code: 'over_email_send_rate_limit', message: 'rate limit' },
+    })
+
+    const erro = await repositorioCom(resetPasswordForEmail)
+      .enviarLinkDeRecuperacao('ana@ufpi.edu.br')
+      .catch((e) => e)
+
+    expect(erro).toBeInstanceOf(Falha)
+    expect(erro.codigo).toBe('over_email_send_rate_limit')
+    expect(erro.mensagem).toBe('Muitos e-mails pedidos. Espere um pouco e tente de novo.')
+  })
+
+  it('usa uma mensagem genérica para erros desconhecidos', async () => {
+    const resetPasswordForEmail = vi
+      .fn()
+      .mockResolvedValue({ data: null, error: { code: 'algo_novo', message: 'boom' } })
+
+    await expect(
+      repositorioCom(resetPasswordForEmail).enviarLinkDeRecuperacao('ana@ufpi.edu.br'),
+    ).rejects.toThrow('Não foi possível enviar o e-mail. Tente de novo.')
+  })
+})
+
+describe('SupabaseAuthRepository.definirNovaSenha (US15)', () => {
+  function repositorioCom(updateUser: ReturnType<typeof vi.fn>) {
+    return new SupabaseAuthRepository({
+      auth: { updateUser },
+    } as unknown as SupabaseClient<Database>)
+  }
+
+  it('troca a senha de quem está logado', async () => {
+    const updateUser = vi.fn().mockResolvedValue({ data: { user: {} }, error: null })
+
+    await repositorioCom(updateUser).definirNovaSenha('nova123')
+
+    expect(updateUser).toHaveBeenCalledWith({ password: 'nova123' })
+  })
+
+  it.each([
+    ['same_password', 'A nova senha precisa ser diferente da atual.'],
+    ['weak_password', 'A senha precisa ter 6 ou mais caracteres.'],
+    ['session_not_found', 'O link expirou. Peça um novo.'],
+  ])('traduz o erro "%s"', async (code, mensagem) => {
+    const updateUser = vi.fn().mockResolvedValue({ data: null, error: { code, message: 'x' } })
+
+    const erro = await repositorioCom(updateUser)
+      .definirNovaSenha('nova123')
+      .catch((e) => e)
+
+    expect(erro).toBeInstanceOf(Falha)
+    expect(erro.codigo).toBe(code)
+    expect(erro.mensagem).toBe(mensagem)
+  })
+
+  it('sem sessão (link vencido), o Supabase manda só o nome do erro, e a mensagem é a do link', async () => {
+    const updateUser = vi.fn().mockResolvedValue({
+      data: null,
+      error: { name: 'AuthSessionMissingError', message: 'Auth session missing!' },
+    })
+
+    const erro = await repositorioCom(updateUser)
+      .definirNovaSenha('nova123')
+      .catch((e) => e)
+
+    expect(erro.codigo).toBe('session_not_found')
+    expect(erro.mensagem).toBe('O link expirou. Peça um novo.')
+  })
+
+  it('usa uma mensagem genérica para erros desconhecidos', async () => {
+    const updateUser = vi
+      .fn()
+      .mockResolvedValue({ data: null, error: { code: 'algo_novo', message: 'boom' } })
+
+    await expect(repositorioCom(updateUser).definirNovaSenha('nova123')).rejects.toThrow(
+      'Não foi possível trocar a senha. Tente de novo.',
+    )
+  })
+})
