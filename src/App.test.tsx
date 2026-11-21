@@ -78,6 +78,34 @@ describe('App', () => {
     expect(screen.getByRole('link', { name: 'Entrar' })).toHaveAttribute('href', '/login')
   })
 
+  it('o login tem o link "Esqueceu a senha?", que leva à recuperação (US15)', () => {
+    abrir('/login', null)
+    expect(screen.getByRole('link', { name: 'Recuperar' })).toHaveAttribute(
+      'href',
+      '/esqueci-senha',
+    )
+    cleanup()
+
+    abrir('/esqueci-senha', null)
+    expect(screen.getByRole('heading', { name: 'Esqueci a senha' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Entrar' })).toHaveAttribute('href', '/login')
+  })
+
+  it('quem abre o link do e-mail, já com a sessão de recuperação, vê a tela "Nova senha" (US15)', () => {
+    abrir('/nova-senha', ana)
+    expect(screen.getByRole('heading', { name: 'Nova senha' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Nova senha')).toBeInTheDocument()
+  })
+
+  it('sem sessão, o link de "Nova senha" avisa que venceu e oferece pedir outro (US15)', () => {
+    abrir('/nova-senha', null)
+    expect(screen.getByRole('alert')).toHaveTextContent('Este link de recuperação expirou')
+    expect(screen.getByRole('link', { name: 'Peça um novo' })).toHaveAttribute(
+      'href',
+      '/esqueci-senha',
+    )
+  })
+
   it('mostra o mapa, o nome e o botão de sair para quem está logado', () => {
     abrir('/', ana)
     expect(screen.getByLabelText('Mapa do campus')).toBeInTheDocument()

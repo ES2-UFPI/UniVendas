@@ -3,6 +3,8 @@ export const ROTAS = {
   mapa: '/',
   login: '/login',
   cadastro: '/cadastro',
+  esqueciSenha: '/esqueci-senha',
+  novaSenha: '/nova-senha',
   queroVender: '/quero-vender',
   painel: '/painel',
   perfilVendedor: '/vendedor/:id',

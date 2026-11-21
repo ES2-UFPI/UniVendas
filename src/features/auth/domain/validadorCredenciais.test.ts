@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { emailValido, senhaValida, validarCadastro, validarLogin } from './validadorCredenciais'
+import {
+  emailValido,
+  senhaValida,
+  validarCadastro,
+  validarEsqueciSenha,
+  validarLogin,
+  validarNovaSenha,
+} from './validadorCredenciais'
 
 describe('emailValido', () => {
   it.each(['ana@ufpi.edu.br', 'joao.silva@gmail.com', '  ana@ufpi.edu.br  '])(
@@ -66,5 +73,44 @@ describe('validarLogin', () => {
 
   it('recusa e-mail inválido', () => {
     expect(validarLogin({ email: 'ana', senha: '123456' })).toHaveProperty('email')
+  })
+})
+
+describe('validarEsqueciSenha (US15)', () => {
+  it('aceita um e-mail válido', () => {
+    expect(validarEsqueciSenha({ email: 'ana@ufpi.edu.br' })).toEqual({})
+  })
+
+  it('pede o e-mail quando está vazio ou só com espaços', () => {
+    expect(validarEsqueciSenha({ email: '' }).email).toBe('Informe seu e-mail.')
+    expect(validarEsqueciSenha({ email: '   ' }).email).toBe('Informe seu e-mail.')
+  })
+
+  it('recusa e-mail mal escrito', () => {
+    expect(validarEsqueciSenha({ email: 'ana@' }).email).toBe(
+      'Digite um e-mail válido, por exemplo ana@ufpi.edu.br.',
+    )
+  })
+})
+
+describe('validarNovaSenha (US15)', () => {
+  it('aceita senha com 6 ou mais caracteres e a confirmação igual', () => {
+    expect(validarNovaSenha({ senha: '123456', confirmacao: '123456' })).toEqual({})
+  })
+
+  it('recusa senha curta', () => {
+    expect(validarNovaSenha({ senha: '12345', confirmacao: '12345' }).senha).toBe(
+      'A senha precisa ter 6 ou mais caracteres.',
+    )
+  })
+
+  it('recusa a confirmação diferente', () => {
+    expect(validarNovaSenha({ senha: '123456', confirmacao: '654321' }).confirmacao).toBe(
+      'As senhas não são iguais.',
+    )
+  })
+
+  it('a confirmação vazia não é igual à senha', () => {
+    expect(validarNovaSenha({ senha: '123456', confirmacao: '' }).confirmacao).toBeDefined()
   })
 })
