@@ -42,6 +42,35 @@ export function validarCadastro(dados: DadosCadastro): ErrosCadastro {
   return erros
 }
 
+/** Valida o e-mail do "Esqueci a senha" (US15). Sem erros, devolve um objeto vazio. */
+export function validarEsqueciSenha(dados: Pick<DadosCadastro, 'email'>): ErrosCadastro {
+  const erros: ErrosCadastro = {}
+
+  if (dados.email.trim() === '') {
+    erros.email = 'Informe seu e-mail.'
+  } else if (!emailValido(dados.email)) {
+    erros.email = 'Digite um e-mail válido, por exemplo ana@ufpi.edu.br.'
+  }
+
+  return erros
+}
+
+export type ErrosNovaSenha = Partial<Record<'senha' | 'confirmacao', string>>
+
+/** Valida a nova senha e a confirmação (US15). Sem erros, devolve um objeto vazio. */
+export function validarNovaSenha(dados: { senha: string; confirmacao: string }): ErrosNovaSenha {
+  const erros: ErrosNovaSenha = {}
+
+  if (!senhaValida(dados.senha)) {
+    erros.senha = `A senha precisa ter ${TAMANHO_MINIMO_SENHA} ou mais caracteres.`
+  }
+  if (dados.confirmacao !== dados.senha) {
+    erros.confirmacao = 'As senhas não são iguais.'
+  }
+
+  return erros
+}
+
 /**
  * Valida os dados do login (US02). Aqui não se cobra o tamanho mínimo da senha: quem decide se
  * ela está certa é o servidor, e a mensagem de senha errada vem de lá (RN04).

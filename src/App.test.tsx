@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App, { AppRotas } from './App'
@@ -79,11 +79,48 @@ describe('App', () => {
     expect(screen.getByRole('link', { name: 'Entrar' })).toHaveAttribute('href', '/login')
   })
 
+  it('o login tem o link "Esqueceu a senha?", que leva à recuperação (US15)', () => {
+    abrir('/login', null)
+    expect(screen.getByRole('link', { name: 'Recuperar' })).toHaveAttribute(
+      'href',
+      '/esqueci-senha',
+    )
+    cleanup()
+
+    abrir('/esqueci-senha', null)
+    expect(screen.getByRole('heading', { name: 'Esqueci a senha' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Entrar' })).toHaveAttribute('href', '/login')
+  })
+
+  it('quem abre o link do e-mail, já com a sessão de recuperação, vê a tela "Nova senha" (US15)', () => {
+    abrir('/nova-senha', ana)
+    expect(screen.getByRole('heading', { name: 'Nova senha' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Nova senha')).toBeInTheDocument()
+  })
+
+  it('sem sessão, o link de "Nova senha" avisa que venceu e oferece pedir outro (US15)', () => {
+    abrir('/nova-senha', null)
+    expect(screen.getByRole('alert')).toHaveTextContent('Este link de recuperação expirou')
+    expect(screen.getByRole('link', { name: 'Peça um novo' })).toHaveAttribute(
+      'href',
+      '/esqueci-senha',
+    )
+  })
+
   it('mostra o mapa, o nome e o botão de sair para quem está logado', () => {
     abrir('/', ana)
     expect(screen.getByLabelText('Mapa do campus')).toBeInTheDocument()
     expect(screen.getByText('Ana')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Sair' })).toBeInTheDocument()
+  })
+
+  it('o mapa tem a visão em lista de quem está no campus (US13)', async () => {
+    abrir('/', ana)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lista' }))
+
+    expect(await screen.findByText('Ninguém está no campus agora.')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Mapa do campus')).not.toBeInTheDocument()
   })
 
   it('quem já está logado e abre o login vai para o mapa', () => {

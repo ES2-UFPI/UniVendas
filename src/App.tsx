@@ -13,10 +13,12 @@ import { RotaProtegida, RotaSoVisitante } from './core/RotaProtegida'
 import { ROTAS } from './core/routes'
 import { useSessaoStore } from './core/sessaoStore'
 import { CadastroPage } from './features/auth/presentation/CadastroPage'
+import { EsqueciSenhaPage } from './features/auth/presentation/EsqueciSenhaPage'
 import { LoginPage } from './features/auth/presentation/LoginPage'
+import { NovaSenhaPage } from './features/auth/presentation/NovaSenhaPage'
 import { MeusItensPage } from './features/itens/presentation/MeusItensPage'
 import { TelaVisitante } from './features/auth/presentation/TelaVisitante'
-import { MapaPage } from './features/mapa/presentation/MapaPage'
+import { VisaoDoCampus } from './features/mapa/presentation/VisaoDoCampus'
 import { useMapaViewModel } from './features/mapa/presentation/useMapaViewModel'
 import type { PresencaRepository } from './features/presenca/domain/PresencaRepository'
 import { PainelVendedorPage } from './features/presenca/presentation/PainelVendedorPage'
@@ -42,10 +44,91 @@ function Login() {
           >
             Criar conta
           </Link>
+          <span className="mt-3 block">
+            Esqueceu a senha?{' '}
+            <Link
+              to={ROTAS.esqueciSenha}
+              className="font-bold text-marca-700 underline underline-offset-2 hover:text-marca-800"
+            >
+              Recuperar
+            </Link>
+          </span>
         </>
       }
     >
       <LoginPage aoEntrar={() => navegar(destino, { replace: true })} />
+    </TelaVisitante>
+  )
+}
+
+/** "Esqueci a senha" (US15): pede o e-mail e manda o link de recuperação. */
+function EsqueciSenha() {
+  return (
+    <TelaVisitante
+      rodape={
+        <>
+          Lembrou da senha?{' '}
+          <Link
+            to={ROTAS.login}
+            className="font-bold text-marca-700 underline underline-offset-2 hover:text-marca-800"
+          >
+            Entrar
+          </Link>
+        </>
+      }
+    >
+      <EsqueciSenhaPage />
+    </TelaVisitante>
+  )
+}
+
+/**
+ * "Nova senha" (US15): quem abre o link do e-mail volta ao app já logado, com uma sessão de
+ * recuperação. Por isso esta rota não é só para visitantes (eles seriam mandados ao mapa) nem
+ * exige login antes: sem sessão, o link expirou ou nunca foi aberto.
+ */
+function NovaSenha() {
+  const navegar = useNavigate()
+  const { usuario, carregando } = useSessaoStore()
+
+  if (carregando) {
+    return (
+      <p role="status" className="p-8 text-center text-gray-600">
+        Carregando…
+      </p>
+    )
+  }
+
+  return (
+    <TelaVisitante
+      rodape={
+        <Link
+          to={ROTAS.login}
+          className="font-bold text-marca-700 underline underline-offset-2 hover:text-marca-800"
+        >
+          Voltar para entrar
+        </Link>
+      }
+    >
+      {usuario ? (
+        <NovaSenhaPage aoTrocar={() => navegar(ROTAS.mapa, { replace: true })} />
+      ) : (
+        <section className="w-full" role="alert">
+          <h2 className="text-4xl font-bold tracking-tight text-tinta lg:text-[3.5rem]">
+            Link vencido
+          </h2>
+          <p className="mt-2 text-base text-tinta-suave lg:text-lg">
+            Este link de recuperação expirou ou já foi usado.{' '}
+            <Link
+              to={ROTAS.esqueciSenha}
+              className="font-bold text-marca-700 underline underline-offset-2 hover:text-marca-800"
+            >
+              Peça um novo
+            </Link>
+            .
+          </p>
+        </section>
+      )}
     </TelaVisitante>
   )
 }
@@ -97,7 +180,9 @@ function MeusItens() {
 
 /** O mapa com os vendedores ativos, que aparecem e somem em tempo real (US06). */
 function Mapa({ presencaRepositorio }: { presencaRepositorio?: PresencaRepository }) {
-  const { marcadores, erro } = useMapaViewModel({ repositorio: presencaRepositorio })
+  const { marcadores, vendedores, carregando, erro } = useMapaViewModel({
+    repositorio: presencaRepositorio,
+  })
   return (
     <>
       {erro && (
@@ -105,7 +190,7 @@ function Mapa({ presencaRepositorio }: { presencaRepositorio?: PresencaRepositor
           {erro}
         </p>
       )}
-      <MapaPage marcadores={marcadores} />
+      <VisaoDoCampus marcadores={marcadores} vendedores={vendedores} carregando={carregando} />
     </>
   )
 }
@@ -124,7 +209,9 @@ export function AppRotas({ presencaRepositorio, vendedorRepositorio }: AppRotasP
       <Route element={<RotaSoVisitante />}>
         <Route path={ROTAS.login} element={<Login />} />
         <Route path={ROTAS.cadastro} element={<Cadastro />} />
+        <Route path={ROTAS.esqueciSenha} element={<EsqueciSenha />} />
       </Route>
+      <Route path={ROTAS.novaSenha} element={<NovaSenha />} />
       <Route element={<RotaProtegida />}>
         <Route element={<Layout />}>
           <Route path={ROTAS.mapa} element={<Mapa presencaRepositorio={presencaRepositorio} />} />

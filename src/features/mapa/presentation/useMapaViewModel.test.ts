@@ -175,3 +175,65 @@ describe('useMapaViewModel', () => {
     }
   })
 })
+
+describe('useMapaViewModel: lista de quem está no campus (US13)', () => {
+  function presencaEm(id: string, nome: string, minutosAtras: number, referencia: string | null) {
+    return new Presenca(
+      id,
+      nome,
+      { latitude: -5.0577, longitude: -42.7955 },
+      false,
+      referencia,
+      new Date(agora.getTime() - minutosAtras * 60_000),
+    )
+  }
+
+  const antiga = presencaEm('v1', 'Brownies da Ana', 10, 'em frente ao RU')
+  const nova = presencaEm('v2', 'Café do Leo', 1, null)
+  const media = presencaEm('v3', 'Pão de queijo da Bia', 5, 'na biblioteca')
+
+  it('entrega os vendedores com os de sinal mais recente primeiro', async () => {
+    const { repositorio } = repositorioFalso(vi.fn().mockResolvedValue([antiga, nova, media]))
+    const { result } = renderHook(() => useMapaViewModel({ repositorio }))
+
+    await waitFor(() => expect(result.current.carregando).toBe(false))
+
+    expect(result.current.vendedores.map((v) => v.id)).toEqual(['v2', 'v3', 'v1'])
+  })
+
+  it('cada item traz o nome, a referência e o horário do último sinal', async () => {
+    const { repositorio } = repositorioFalso(vi.fn().mockResolvedValue([antiga]))
+    const { result } = renderHook(() => useMapaViewModel({ repositorio }))
+
+    await waitFor(() => expect(result.current.carregando).toBe(false))
+
+    expect(result.current.vendedores).toEqual([
+      {
+        id: 'v1',
+        nome: 'Brownies da Ana',
+        referencia: 'em frente ao RU',
+        ultimoSinalEm: antiga.ultimoSinalEm,
+      },
+    ])
+  })
+
+  it('usa a mesma lista do mapa: o evento do Observer atualiza o mapa e a lista juntos', async () => {
+    const { repositorio, emitir } = repositorioFalso(vi.fn().mockResolvedValue([antiga]))
+    const { result } = renderHook(() => useMapaViewModel({ repositorio }))
+    await waitFor(() => expect(result.current.carregando).toBe(false))
+
+    emitir([antiga, nova])
+
+    expect(result.current.vendedores.map((v) => v.id)).toEqual(['v2', 'v1'])
+    expect(result.current.marcadores.map((m) => m.id)).toEqual(['v1', 'v2'])
+  })
+
+  it('não muda a ordem da lista original (o mapa continua na ordem recebida)', async () => {
+    const { repositorio } = repositorioFalso(vi.fn().mockResolvedValue([antiga, nova]))
+    const { result } = renderHook(() => useMapaViewModel({ repositorio }))
+
+    await waitFor(() => expect(result.current.carregando).toBe(false))
+
+    expect(result.current.marcadores.map((m) => m.id)).toEqual(['v1', 'v2'])
+  })
+})
