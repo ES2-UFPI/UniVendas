@@ -9,6 +9,7 @@ export const ROTAS = {
   painel: '/painel',
   perfilVendedor: '/vendedor/:id',
   meusItens: '/meus-itens',
+  busca: '/busca',
 } as const
 
 /** Endereço do perfil de um vendedor, ex.: `/vendedor/123` (US10). */

@@ -13,6 +13,7 @@ import { RotaProtegida, RotaSoVisitante } from './core/RotaProtegida'
 import { ROTAS } from './core/routes'
 import { useSessaoStore } from './core/sessaoStore'
 import { CadastroPage } from './features/auth/presentation/CadastroPage'
+import { BuscaPage } from './features/busca/presentation/BuscaPage'
 import { EsqueciSenhaPage } from './features/auth/presentation/EsqueciSenhaPage'
 import { LoginPage } from './features/auth/presentation/LoginPage'
 import { NovaSenhaPage } from './features/auth/presentation/NovaSenhaPage'
@@ -218,6 +219,7 @@ export function AppRotas({ presencaRepositorio, vendedorRepositorio }: AppRotasP
             element={<PerfilVendedor repositorio={vendedorRepositorio} />}
           />
           <Route path={ROTAS.meusItens} element={<MeusItens />} />
+          <Route path={ROTAS.busca} element={<BuscaPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to={ROTAS.mapa} replace />} />
