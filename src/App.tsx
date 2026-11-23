@@ -173,7 +173,8 @@ function MeuPerfil({ repositorio }: { repositorio?: VendedorRepository }) {
 /** Perfil do vendedor (US10): o id vem do endereço `/vendedor/:id`. */
 function PerfilVendedor({ repositorio }: { repositorio?: VendedorRepository }) {
   const { id = '' } = useParams()
-  return <PerfilVendedorPage id={id} repositorio={repositorio} />
+  const usuario = useSessaoStore((s) => s.usuario)
+  return <PerfilVendedorPage id={id} meuPerfilId={usuario?.id ?? null} repositorio={repositorio} />
 }
 
 /** Tela "Conversas" (US18): as conversas de quem está logado. */
@@ -196,8 +197,10 @@ function MeusItens() {
 
 /** O mapa com os vendedores ativos, que aparecem e somem em tempo real (US06). */
 function Mapa({ presencaRepositorio }: { presencaRepositorio?: PresencaRepository }) {
+  const usuario = useSessaoStore((s) => s.usuario)
   const { marcadores, vendedores, carregando, erro } = useMapaViewModel({
     repositorio: presencaRepositorio,
+    perfilId: usuario?.id ?? null,
   })
   return (
     <>

@@ -23,7 +23,7 @@ function linha(
     ponto_escolhido: false,
     referencia,
     ultimo_sinal_em: sinal,
-    vendedores: nome === null ? null : { nome_exibicao: nome, contatos },
+    vendedores: nome === null ? null : { nome_exibicao: nome, perfil_id: `dono-${id}`, contatos },
   }
 }
 
@@ -66,7 +66,7 @@ describe('SupabasePresencaRepository.listarAtivos', () => {
 
     expect(client.from).toHaveBeenCalledWith('presenca')
     expect(select).toHaveBeenCalledWith(
-      expect.stringContaining('vendedores(nome_exibicao, contatos(canal, valor))'),
+      expect.stringContaining('vendedores(nome_exibicao, perfil_id, contatos(canal, valor))'),
     )
     expect(ativos).toHaveLength(1)
     expect(ativos[0]).toBeInstanceOf(Presenca)
@@ -76,6 +76,7 @@ describe('SupabasePresencaRepository.listarAtivos', () => {
       posicao: { latitude: -5.0577, longitude: -42.7955 },
       pontoEscolhido: false,
       referencia: 'em frente ao RU',
+      perfilId: 'dono-v1',
     })
     expect(ativos[0].ultimoSinalEm).toEqual(new Date(haMinutos(5)))
   })

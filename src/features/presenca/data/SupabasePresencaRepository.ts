@@ -33,9 +33,9 @@ function paraFalha(erro: { code?: string }, mensagemPadrao = MENSAGEM_PADRAO): F
   return new Falha(mensagemPadrao, erro.code ?? 'desconhecido')
 }
 
-/** Colunas de `presenca`, o nome e os contatos do vendedor, que o balão do marcador mostra. */
+/** Colunas de `presenca`, o nome, o dono e os contatos do vendedor, que o balão do marcador usa. */
 const COLUNAS =
-  'vendedor_id, latitude, longitude, ponto_escolhido, referencia, ultimo_sinal_em, vendedores(nome_exibicao, contatos(canal, valor))'
+  'vendedor_id, latitude, longitude, ponto_escolhido, referencia, ultimo_sinal_em, vendedores(nome_exibicao, perfil_id, contatos(canal, valor))'
 
 const CANAIS: readonly string[] = ['whatsapp', 'telefone'] satisfies CanalTipo[]
 
@@ -56,7 +56,11 @@ interface LinhaPresenca {
   ponto_escolhido: boolean
   referencia: string | null
   ultimo_sinal_em: string
-  vendedores: { nome_exibicao: string; contatos?: { canal: string; valor: string }[] } | null
+  vendedores: {
+    nome_exibicao: string
+    perfil_id?: string
+    contatos?: { canal: string; valor: string }[]
+  } | null
 }
 
 function paraPresenca(linha: LinhaPresenca): Presenca {
@@ -68,6 +72,7 @@ function paraPresenca(linha: LinhaPresenca): Presenca {
     linha.referencia,
     new Date(linha.ultimo_sinal_em),
     paraContatos(linha.vendedores?.contatos),
+    linha.vendedores?.perfil_id ?? null,
   )
 }
 
