@@ -12,8 +12,11 @@ import type { VendedorRepository } from '../domain/VendedorRepository'
 
 const BUCKET_FOTOS = 'fotos'
 
-/** O vendedor, os contatos, os itens e a presença, numa consulta só. */
-const COLUNAS_PERFIL = '*, contatos(canal, valor), itens(*), presenca(ultimo_sinal_em)'
+/**
+ * O vendedor, os contatos, os itens e a presença, numa consulta só. Os contatos ocultos nem chegam
+ * aqui para os outros usuários: o RLS só os entrega ao dono (RN24).
+ */
+const COLUNAS_PERFIL = '*, contatos(canal, valor, visivel), itens(*), presenca(ultimo_sinal_em)'
 
 const CANAIS: readonly string[] = ['whatsapp', 'telefone'] satisfies CanalTipo[]
 
@@ -73,7 +76,7 @@ export class SupabaseVendedorRepository implements VendedorRepository {
       VendedorFactory.criar(dadosVendedor),
       contatos
         .filter((c) => CANAIS.includes(c.canal))
-        .map((c) => new Contato(c.canal as CanalTipo, c.valor)),
+        .map((c) => new Contato(c.canal as CanalTipo, c.valor, c.visivel)),
       itens.map(paraItem),
       ativoAgora,
     )
