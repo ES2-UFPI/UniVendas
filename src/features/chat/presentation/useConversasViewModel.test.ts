@@ -1,5 +1,5 @@
-import { renderHook, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { cleanup, renderHook, waitFor } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Falha } from '../../../core/falha'
 import type { ChatRepository } from '../domain/ChatRepository'
 import { Conversa } from '../domain/Conversa'
@@ -31,6 +31,10 @@ function repositorio(listarConversas = vi.fn().mockResolvedValue([comLeo, comBia
     observarMensagens: vi.fn(),
   } as ChatRepository
 }
+
+// Desmonta os hooks no fim de cada teste: sem isso, uma atualização pendente do React roda
+// depois que o ambiente do jsdom já foi desmontado e quebra com "window is not defined".
+afterEach(cleanup)
 
 describe('useConversasViewModel (US18)', () => {
   it('mostra o nome da outra pessoa e a última mensagem, na ordem do repositório', async () => {
