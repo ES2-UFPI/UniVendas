@@ -15,7 +15,7 @@ export function Layout() {
     <div className="flex min-h-screen flex-col bg-white">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 p-3">
         <span className="text-xl font-bold text-green-700">UniVendas</span>
-        <nav className="flex gap-1">
+        <nav className="flex flex-wrap gap-1">
           <NavLink to={ROTAS.mapa} end className={estiloLink}>
             Mapa
           </NavLink>
@@ -27,6 +27,9 @@ export function Layout() {
           </NavLink>
           <NavLink to={ROTAS.meusItens} className={estiloLink}>
             Meus itens
+          </NavLink>
+          <NavLink to={ROTAS.conversas} className={estiloLink}>
+            Conversas
           </NavLink>
           <NavLink to={ROTAS.meuPerfil} className={estiloLink}>
             Meu perfil

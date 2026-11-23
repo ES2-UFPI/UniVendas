@@ -18,6 +18,7 @@ import { LoginPage } from './features/auth/presentation/LoginPage'
 import { NovaSenhaPage } from './features/auth/presentation/NovaSenhaPage'
 import type { ChatRepository } from './features/chat/domain/ChatRepository'
 import { ConversaPage } from './features/chat/presentation/ConversaPage'
+import { ConversasPage } from './features/chat/presentation/ConversasPage'
 import { MeusItensPage } from './features/itens/presentation/MeusItensPage'
 import { TelaVisitante } from './features/auth/presentation/TelaVisitante'
 import { VisaoDoCampus } from './features/mapa/presentation/VisaoDoCampus'
@@ -175,6 +176,12 @@ function PerfilVendedor({ repositorio }: { repositorio?: VendedorRepository }) {
   return <PerfilVendedorPage id={id} repositorio={repositorio} />
 }
 
+/** Tela "Conversas" (US18): as conversas de quem está logado. */
+function Conversas({ repositorio }: { repositorio?: ChatRepository }) {
+  const usuario = useSessaoStore((s) => s.usuario)
+  return <ConversasPage perfilId={usuario?.id ?? null} repositorio={repositorio} />
+}
+
 /** Tela da conversa (US18): o id vem do endereço `/conversa/:id`. */
 function Conversa({ repositorio }: { repositorio?: ChatRepository }) {
   const { id = '' } = useParams()
@@ -241,6 +248,7 @@ export function AppRotas({
             element={<PerfilVendedor repositorio={vendedorRepositorio} />}
           />
           <Route path={ROTAS.meusItens} element={<MeusItens />} />
+          <Route path={ROTAS.conversas} element={<Conversas repositorio={chatRepositorio} />} />
           <Route path={ROTAS.conversa} element={<Conversa repositorio={chatRepositorio} />} />
         </Route>
       </Route>

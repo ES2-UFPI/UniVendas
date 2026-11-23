@@ -1,5 +1,5 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Falha } from '../../../core/falha'
 import type { ChatRepository } from '../domain/ChatRepository'
 import { Conversa } from '../domain/Conversa'
@@ -41,6 +41,10 @@ function repositorioFalso(mudar: Partial<ChatRepository> = {}) {
 function abrir(repositorio: ChatRepository, perfilId: string | null = 'ana') {
   return renderHook(() => useConversaViewModel({ conversaId: 'c1', perfilId, repositorio }))
 }
+
+// Desmonta os hooks no fim de cada teste: sem isso, uma atualização pendente do React roda
+// depois que o ambiente do jsdom já foi desmontado e quebra com "window is not defined".
+afterEach(cleanup)
 
 describe('useConversaViewModel (US18)', () => {
   it('carrega a conversa e as mensagens, marcando quais são de quem está logado', async () => {
