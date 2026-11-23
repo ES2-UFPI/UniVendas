@@ -9,9 +9,15 @@ export const ROTAS = {
   painel: '/painel',
   perfilVendedor: '/vendedor/:id',
   meusItens: '/meus-itens',
+  conversa: '/conversa/:id',
 } as const
 
 /** Endereço do perfil de um vendedor, ex.: `/vendedor/123` (US10). */
 export function rotaPerfilVendedor(id: string): string {
   return ROTAS.perfilVendedor.replace(':id', encodeURIComponent(id))
+}
+
+/** Endereço da tela de uma conversa do chat, ex.: `/conversa/123` (US18). */
+export function rotaConversa(id: string): string {
+  return ROTAS.conversa.replace(':id', encodeURIComponent(id))
 }

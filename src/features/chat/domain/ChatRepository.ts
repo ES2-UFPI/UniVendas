@@ -14,6 +14,12 @@ export interface ChatRepository {
    */
   abrirConversa(vendedorId: string): Promise<Conversa>
 
+  /**
+   * Busca uma conversa pelo id, com o nome dos dois lados, para o topo da tela da conversa.
+   * É `null` se ela não existe ou se quem está logado não participa dela (a RLS esconde, RN23).
+   */
+  buscarConversa(conversaId: string): Promise<Conversa | null>
+
   /** Lista as conversas de quem está logado, como consumidor e como vendedor, as mais recentes primeiro. */
   listarConversas(): Promise<Conversa[]>
 
