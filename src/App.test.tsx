@@ -8,7 +8,9 @@ import type { PresencaRepository } from './features/presenca/domain/PresencaRepo
 import { PerfilVendedor } from './features/vendedores/domain/PerfilVendedor'
 import { VendedorAmbulante } from './features/vendedores/domain/Vendedor'
 import type { VendedorRepository } from './features/vendedores/domain/VendedorRepository'
-import { rotaPerfilVendedor } from './core/routes'
+import { rotaConversa, rotaPerfilVendedor } from './core/routes'
+import type { ChatRepository } from './features/chat/domain/ChatRepository'
+import { Conversa } from './features/chat/domain/Conversa'
 
 afterEach(() => {
   cleanup()
@@ -39,6 +41,18 @@ const vendedorRepositorio = {
   ),
 } as VendedorRepository
 
+// Repositório do chat falso: a conversa não pode abrir canal no Supabase de verdade.
+const chatRepositorio = {
+  abrirConversa: vi.fn(),
+  buscarConversa: vi.fn((id: string) =>
+    Promise.resolve(new Conversa(id, 'u1', 'Ana', 'v1', 'u2', 'Café do Leo', new Date())),
+  ),
+  listarConversas: vi.fn(),
+  listarMensagens: vi.fn().mockResolvedValue([]),
+  enviar: vi.fn(),
+  observarMensagens: vi.fn(() => () => {}),
+} as ChatRepository
+
 /** Abre o app no endereço `url`, com a sessão já definida. */
 function abrir(url: string, usuario: Usuario | null) {
   useSessaoStore.setState({ usuario, carregando: false })
@@ -47,6 +61,7 @@ function abrir(url: string, usuario: Usuario | null) {
       <AppRotas
         presencaRepositorio={presencaRepositorio}
         vendedorRepositorio={vendedorRepositorio}
+        chatRepositorio={chatRepositorio}
       />
     </MemoryRouter>,
   )
@@ -174,6 +189,16 @@ describe('App', () => {
 
     abrir('/meus-itens', ana)
     expect(screen.getByRole('heading', { name: 'Meus itens' })).toBeInTheDocument()
+  })
+
+  it('abre a conversa pela rota /conversa/:id (US18)', async () => {
+    abrir(rotaConversa('c1'), ana)
+    expect(await screen.findByRole('heading', { name: 'Café do Leo' })).toBeInTheDocument()
+  })
+
+  it('protege também a tela da conversa', () => {
+    abrir(rotaConversa('c1'), null)
+    expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
   })
 
   it('endereço desconhecido volta para o mapa', () => {

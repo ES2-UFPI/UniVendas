@@ -16,6 +16,8 @@ import { CadastroPage } from './features/auth/presentation/CadastroPage'
 import { EsqueciSenhaPage } from './features/auth/presentation/EsqueciSenhaPage'
 import { LoginPage } from './features/auth/presentation/LoginPage'
 import { NovaSenhaPage } from './features/auth/presentation/NovaSenhaPage'
+import type { ChatRepository } from './features/chat/domain/ChatRepository'
+import { ConversaPage } from './features/chat/presentation/ConversaPage'
 import { MeusItensPage } from './features/itens/presentation/MeusItensPage'
 import { TelaVisitante } from './features/auth/presentation/TelaVisitante'
 import { VisaoDoCampus } from './features/mapa/presentation/VisaoDoCampus'
@@ -166,6 +168,13 @@ function PerfilVendedor({ repositorio }: { repositorio?: VendedorRepository }) {
   return <PerfilVendedorPage id={id} repositorio={repositorio} />
 }
 
+/** Tela da conversa (US18): o id vem do endereço `/conversa/:id`. */
+function Conversa({ repositorio }: { repositorio?: ChatRepository }) {
+  const { id = '' } = useParams()
+  const usuario = useSessaoStore((s) => s.usuario)
+  return <ConversaPage conversaId={id} perfilId={usuario?.id ?? null} repositorio={repositorio} />
+}
+
 function MeusItens() {
   const usuario = useSessaoStore((s) => s.usuario)
   return <MeusItensPage perfilId={usuario?.id ?? null} />
@@ -193,10 +202,16 @@ interface AppRotasProps {
   presencaRepositorio?: PresencaRepository
   /** Só para os testes: repositório de vendedores falso (sem rede). */
   vendedorRepositorio?: VendedorRepository
+  /** Só para os testes: repositório do chat falso (sem rede). */
+  chatRepositorio?: ChatRepository
 }
 
 /** As rotas do app, sem o roteador (os testes usam um `MemoryRouter` em volta). */
-export function AppRotas({ presencaRepositorio, vendedorRepositorio }: AppRotasProps = {}) {
+export function AppRotas({
+  presencaRepositorio,
+  vendedorRepositorio,
+  chatRepositorio,
+}: AppRotasProps = {}) {
   return (
     <Routes>
       <Route element={<RotaSoVisitante />}>
@@ -218,6 +233,7 @@ export function AppRotas({ presencaRepositorio, vendedorRepositorio }: AppRotasP
             element={<PerfilVendedor repositorio={vendedorRepositorio} />}
           />
           <Route path={ROTAS.meusItens} element={<MeusItens />} />
+          <Route path={ROTAS.conversa} element={<Conversa repositorio={chatRepositorio} />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to={ROTAS.mapa} replace />} />
