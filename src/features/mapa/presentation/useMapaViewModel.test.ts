@@ -116,6 +116,24 @@ describe('useMapaViewModel', () => {
     ])
   })
 
+  it('não cria botão para o número oculto (US19)', async () => {
+    const comOculto = new Presenca(
+      'v1',
+      'Brownies da Ana',
+      { latitude: -5.0577, longitude: -42.7955 },
+      false,
+      null,
+      agora,
+      [new Contato('whatsapp', '5586999990000', false), new Contato('telefone', '5586988880000')],
+    )
+    const { repositorio } = repositorioFalso(vi.fn().mockResolvedValue([comOculto]))
+    const { result } = renderHook(() => useMapaViewModel({ repositorio }))
+
+    await waitFor(() => expect(result.current.carregando).toBe(false))
+
+    expect(result.current.marcadores[0].contatos?.map((c) => c.canal)).toEqual(['telefone'])
+  })
+
   it('atualiza os marcadores quando o repositório avisa que algo mudou (Observer)', async () => {
     const { repositorio, emitir } = repositorioFalso()
     const { result } = renderHook(() => useMapaViewModel({ repositorio }))
