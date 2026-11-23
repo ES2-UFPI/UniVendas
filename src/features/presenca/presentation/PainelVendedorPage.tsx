@@ -18,7 +18,7 @@ export function PainelVendedorPage({ repositorio, localizacao }: PainelVendedorP
     <section className="mx-auto w-full max-w-md p-4">
       <h2 className="text-xl font-bold text-gray-900">Painel do vendedor</h2>
       <p className="mt-1 text-sm text-gray-600">
-        Ligue o botão quando estiver no campus para aparecer no mapa para os estudantes.
+        Ligue o botão quando estiver no campus para aparecer no mapa para os consumidores.
       </p>
 
       <div className="mt-4 flex flex-col gap-1">

@@ -1,6 +1,6 @@
 # UniVendas
 
-Plataforma que conecta estudantes universitários a vendedores locais — quiosques, ambulantes e prestadores de serviço — facilitando o comércio dentro e ao redor do campus.
+Plataforma que conecta consumidores da comunidade do campus (estudantes, professores, funcionários e visitantes) a vendedores locais — quiosques, ambulantes e prestadores de serviço — facilitando o comércio dentro e ao redor do campus.
 
 Projeto da disciplina Engenharia de Software II (Ciência da Computação, UFPI). Documentação na [wiki](https://github.com/ES2-UFPI/UniVendas/wiki).
 
