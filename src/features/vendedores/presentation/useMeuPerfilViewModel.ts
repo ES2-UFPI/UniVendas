@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { comprimirImagem } from '../../../core/comprimirImagem'
 import { Falha } from '../../../core/falha'
 import { SupabaseVendedorRepository } from '../data/SupabaseVendedorRepository'
-import type { Contato } from '../domain/Contato'
+import { Contato, type CanalTipo } from '../domain/Contato'
 import type { Vendedor } from '../domain/Vendedor'
 import { VendedorFactory } from '../domain/VendedorFactory'
 import type { VendedorRepository } from '../domain/VendedorRepository'
@@ -14,6 +14,11 @@ import {
 } from '../domain/validacoesVendedor'
 
 const VAZIO: DadosCadastroVendedor = { nomeExibicao: '', descricao: '', whatsapp: '', telefone: '' }
+
+/** Se cada canal aparece para os outros usuários. Todo contato começa visível (RN24). */
+export type VisibilidadeContatos = Record<CanalTipo, boolean>
+
+const TODOS_VISIVEIS: VisibilidadeContatos = { whatsapp: true, telefone: true }
 
 const MENSAGEM_CARREGAR = 'Não foi possível carregar seu perfil. Tente de novo.'
 const MENSAGEM_SALVAR = 'Não foi possível salvar o perfil. Tente de novo.'
@@ -43,10 +48,16 @@ function dadosDoPerfil(vendedor: Vendedor, contatos: Contato[]): DadosCadastroVe
   }
 }
 
+/** O que está salvo para cada canal; canal que ainda não existe fica visível. */
+function visibilidadeDe(contatos: Contato[]): VisibilidadeContatos {
+  const visivel = (canal: CanalTipo) => contatos.find((c) => c.canal === canal)?.visivel ?? true
+  return { whatsapp: visivel('whatsapp'), telefone: visivel('telefone') }
+}
+
 /**
  * ViewModel da tela "Meu perfil" (US14): carrega o perfil de vendedor da conta, guarda os campos
  * (nome, descrição, foto e contatos), valida com as mesmas regras do cadastro (US03) e salva
- * com o `atualizarPerfil` do `VendedorRepository`.
+ * com o `atualizarPerfil` do `VendedorRepository`. Também guarda quais números ficam ocultos (US19).
  */
 export function useMeuPerfilViewModel({
   perfilId = null,
@@ -55,6 +66,7 @@ export function useMeuPerfilViewModel({
 }: Opcoes = {}) {
   const [vendedor, setVendedor] = useState<Vendedor | null>(null)
   const [dados, setDados] = useState<DadosCadastroVendedor>(VAZIO)
+  const [visiveis, setVisiveis] = useState<VisibilidadeContatos>(TODOS_VISIVEIS)
   const [erros, setErros] = useState<ErrosCadastroVendedor>({})
   const [carregando, setCarregando] = useState(perfilId !== null)
   const [semPerfil, setSemPerfil] = useState(false)
@@ -92,6 +104,7 @@ export function useMeuPerfilViewModel({
         if (ativo) {
           setVendedor(doUsuario)
           setDados(dadosDoPerfil(doUsuario, perfil?.contatos ?? []))
+          setVisiveis(visibilidadeDe(perfil?.contatos ?? []))
         }
       } catch (e) {
         if (ativo) setErroCarga(mensagemDe(e, MENSAGEM_CARREGAR))
@@ -110,6 +123,12 @@ export function useMeuPerfilViewModel({
   function alterar(campo: keyof DadosCadastroVendedor, valor: string) {
     setSalvo(false)
     setDados((atual) => ({ ...atual, [campo]: valor }))
+  }
+
+  /** Mostra ou oculta um número para os outros usuários (US19). Vale depois de salvar. */
+  function mostrarContato(canal: CanalTipo, mostrar: boolean) {
+    setSalvo(false)
+    setVisiveis((atual) => ({ ...atual, [canal]: mostrar }))
   }
 
   /** Valida os campos, mostra os erros e devolve true se o formulário pode ser salvo. */
@@ -148,11 +167,13 @@ export function useMeuPerfilViewModel({
 
     setSalvando(true)
     try {
-      const { vendedor: editado, contatos } = VendedorFactory.doFormulario(
+      const { vendedor: editado, contatos: doFormulario } = VendedorFactory.doFormulario(
         vendedor.perfilId,
         dados,
         vendedor.id,
       )
+      // O contato continua obrigatório mesmo oculto (RN06); só muda quem o recebe (RN24).
+      const contatos = doFormulario.map((c) => new Contato(c.canal, c.valor, visiveis[c.canal]))
       const repo = repositorio ?? new SupabaseVendedorRepository()
       setVendedor(await repo.atualizarPerfil(editado, contatos, fotoNova ?? undefined))
       // A foto nova já virou a foto do perfil; a prévia passa a vir do vendedor salvo.
@@ -172,6 +193,12 @@ export function useMeuPerfilViewModel({
     dados,
     erros,
     alterar,
+    visiveis,
+    mostrarContato,
+    // Com todos os números ocultos, quem compra só fala com o vendedor pelo Chat.
+    todosOcultos:
+      (!dados.whatsapp.trim() || !visiveis.whatsapp) &&
+      (!dados.telefone.trim() || !visiveis.telefone),
     validar,
     carregando,
     semPerfil,
