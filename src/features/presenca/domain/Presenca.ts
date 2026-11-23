@@ -16,6 +16,8 @@ export class Presenca {
   readonly ultimoSinalEm: Date
   /** Contatos do vendedor, para os botões do balão (US07). Pode vir vazio. */
   readonly contatos: Contato[]
+  /** Perfil do dono do vendedor, para o mapa não oferecer "Chat" com o próprio usuário (RN22). */
+  readonly perfilId: string | null
 
   constructor(
     vendedorId: string,
@@ -25,6 +27,7 @@ export class Presenca {
     referencia: string | null,
     ultimoSinalEm: Date,
     contatos: Contato[] = [],
+    perfilId: string | null = null,
   ) {
     this.vendedorId = vendedorId
     this.nomeVendedor = nomeVendedor
@@ -33,6 +36,7 @@ export class Presenca {
     this.referencia = referencia
     this.ultimoSinalEm = ultimoSinalEm
     this.contatos = contatos
+    this.perfilId = perfilId
   }
 
   /**
