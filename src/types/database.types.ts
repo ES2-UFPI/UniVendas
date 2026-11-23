@@ -303,6 +303,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      buscar_itens: {
+        Args: { texto: string }
+        Returns: {
+          categoria_id: number
+          descricao: string
+          disponivel: boolean
+          foto_url: string
+          id: string
+          no_campus_agora: boolean
+          nome: string
+          preco: number
+          vendedor_id: string
+          vendedor_nome: string
+        }[]
+      }
       desligar_presenca: { Args: never; Returns: undefined }
       desligar_presencas_sem_sinal: { Args: never; Returns: number }
       excluir_conta: { Args: never; Returns: undefined }
