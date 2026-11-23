@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Falha } from '../../../core/falha'
+import type { AuthRepository } from '../../auth/domain/AuthRepository'
 import { Contato } from '../domain/Contato'
 import { PerfilVendedor } from '../domain/PerfilVendedor'
 import { VendedorAmbulante } from '../domain/Vendedor'
@@ -37,6 +38,41 @@ function abrir({
 
 const botao = () => screen.getByRole('button', { name: 'Salvar alterações' })
 const nome = () => screen.findByLabelText('Nome que os compradores vão ver')
+
+describe('MeuPerfilPage: excluir a conta (US17)', () => {
+  it('mostra o "Excluir minha conta" mesmo para quem ainda não tem perfil de vendedor', async () => {
+    abrir({ doUsuario: vi.fn().mockResolvedValue(null) })
+
+    expect(await screen.findByRole('link', { name: 'Quero vender' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Excluir minha conta' })).toBeInTheDocument()
+  })
+
+  it('avisa quem chamou depois de excluir a conta', async () => {
+    const excluirConta = vi.fn().mockResolvedValue(undefined)
+    const aoExcluirConta = vi.fn()
+    render(
+      <MemoryRouter>
+        <MeuPerfilPage
+          perfilId="u1"
+          repositorio={
+            {
+              buscarDoUsuario: vi.fn().mockResolvedValue(ana),
+              buscarPerfil: vi.fn().mockResolvedValue(new PerfilVendedor(ana, contatos, [], false)),
+            } as unknown as VendedorRepository
+          }
+          authRepositorio={{ excluirConta } as unknown as AuthRepository}
+          aoExcluirConta={aoExcluirConta}
+        />
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Excluir minha conta' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sim, excluir minha conta' }))
+
+    await waitFor(() => expect(aoExcluirConta).toHaveBeenCalledTimes(1))
+    expect(excluirConta).toHaveBeenCalledTimes(1)
+  })
+})
 
 describe('MeuPerfilPage (US14)', () => {
   it('mostra o perfil atual nos campos, com o telefone como a pessoa digita', async () => {

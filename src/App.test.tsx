@@ -177,6 +177,14 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
   })
 
+  it('a tela "Meu perfil" tem o "Excluir minha conta", com confirmação (US17)', () => {
+    abrir('/meu-perfil', ana)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Excluir minha conta' }))
+
+    expect(screen.getByRole('alertdialog', { name: 'Excluir minha conta?' })).toBeInTheDocument()
+  })
+
   it('protege também a tela "Meu perfil"', () => {
     abrir('/meu-perfil', null)
     expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
