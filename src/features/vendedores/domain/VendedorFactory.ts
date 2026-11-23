@@ -30,14 +30,16 @@ export class VendedorFactory {
 
   /**
    * Monta o vendedor ambulante e os contatos a partir do formulário "Quero vender" (já validado).
-   * O `id` fica vazio até o banco criar o registro; os telefones saem no formato 55 + DDD (RN21).
+   * O `id` fica vazio até o banco criar o registro; ao editar o perfil (US14), passe o `vendedorId`.
+   * Os telefones saem no formato 55 + DDD (RN21).
    */
   static doFormulario(
     perfilId: string,
     dados: DadosCadastroVendedor,
+    vendedorId = '',
   ): { vendedor: Vendedor; contatos: Contato[] } {
     const vendedor = new VendedorAmbulante(
-      '',
+      vendedorId,
       perfilId,
       dados.nomeExibicao.trim(),
       dados.descricao.trim(),
