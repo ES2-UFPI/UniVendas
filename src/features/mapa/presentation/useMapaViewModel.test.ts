@@ -62,7 +62,30 @@ describe('useMapaViewModel', () => {
         nome: 'Brownies da Ana',
         referencia: 'em frente ao RU',
         contatos: [],
+        meu: false,
       },
+    ])
+  })
+
+  it('marca o marcador do próprio usuário, para o balão não mostrar "Chat" (RN22)', async () => {
+    const minha = new Presenca(
+      'v9',
+      'Minha banca',
+      { latitude: -5.0577, longitude: -42.7955 },
+      false,
+      null,
+      agora,
+      [],
+      'eu',
+    )
+    const { repositorio } = repositorioFalso(vi.fn().mockResolvedValue([ana, minha]))
+    const { result } = renderHook(() => useMapaViewModel({ repositorio, perfilId: 'eu' }))
+
+    await waitFor(() => expect(result.current.carregando).toBe(false))
+
+    expect(result.current.marcadores.map((m) => [m.id, m.meu])).toEqual([
+      ['v1', false],
+      ['v9', true],
     ])
   })
 
