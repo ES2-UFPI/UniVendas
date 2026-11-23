@@ -166,8 +166,16 @@ function QueroVender() {
 
 /** "Meu perfil" (US14): o vendedor edita o próprio perfil. */
 function MeuPerfil({ repositorio }: { repositorio?: VendedorRepository }) {
+  const navegar = useNavigate()
   const usuario = useSessaoStore((s) => s.usuario)
-  return <MeuPerfilPage perfilId={usuario?.id ?? null} repositorio={repositorio} />
+  return (
+    <MeuPerfilPage
+      perfilId={usuario?.id ?? null}
+      repositorio={repositorio}
+      // Conta excluída: a sessão já foi limpa, então volta para o login.
+      aoExcluirConta={() => navegar(ROTAS.login, { replace: true })}
+    />
+  )
 }
 
 /** Perfil do vendedor (US10): o id vem do endereço `/vendedor/:id`. */

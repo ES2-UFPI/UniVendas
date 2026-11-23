@@ -15,6 +15,14 @@ export interface AuthRepository {
   sair(): Promise<void>
 
   /**
+   * Exclui a conta de quem está logado e os dados dela (US17, RN05): primeiro as fotos do bucket e,
+   * depois, em cascata no servidor, perfil, vendedor, itens, contatos, presença e conversas.
+   * Em seguida a pessoa sai da conta neste aparelho. Lança `Falha` se não conseguir; se a falha vier
+   * depois das fotos, a conta continua, mas as fotos já foram apagadas.
+   */
+  excluirConta(): Promise<void>
+
+  /**
    * Manda para o e-mail o link de recuperar a senha (US15). O link abre a tela "Nova senha".
    * Não diz se o e-mail tem conta: com ou sem conta, o resultado é o mesmo. Lança `Falha` se não conseguir enviar.
    */

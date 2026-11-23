@@ -1,6 +1,8 @@
 import type { FormEvent, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ROTAS } from '../../../core/routes'
+import type { AuthRepository } from '../../auth/domain/AuthRepository'
+import { ExcluirContaSecao } from '../../auth/presentation/ExcluirContaSecao'
 import type { VendedorRepository } from '../domain/VendedorRepository'
 import { useMeuPerfilViewModel } from './useMeuPerfilViewModel'
 
@@ -10,6 +12,10 @@ interface MeuPerfilPageProps {
   /** Só para os testes: repositório e compressão falsos. */
   repositorio?: VendedorRepository
   comprimir?: (foto: Blob) => Promise<Blob>
+  /** Chamado depois que a conta foi excluída (US17). O App usa para voltar ao login. */
+  aoExcluirConta?: () => void
+  /** Só para os testes: repositório de autenticação falso, usado para excluir a conta. */
+  authRepositorio?: AuthRepository
 }
 
 const estiloCampo =
@@ -42,7 +48,13 @@ function Campo({
 }
 
 /** Tela "Meu perfil" (US14): o vendedor edita nome, descrição, foto e contatos do próprio perfil. */
-export function MeuPerfilPage({ perfilId, repositorio, comprimir }: MeuPerfilPageProps) {
+export function MeuPerfilPage({
+  perfilId,
+  repositorio,
+  comprimir,
+  aoExcluirConta,
+  authRepositorio,
+}: MeuPerfilPageProps) {
   const vm = useMeuPerfilViewModel({ perfilId, repositorio, comprimir })
   const { dados, erros } = vm
   const ocupado = vm.salvando || vm.preparandoFoto
@@ -201,6 +213,8 @@ export function MeuPerfilPage({ perfilId, repositorio, comprimir }: MeuPerfilPag
           </button>
         </form>
       )}
+
+      <ExcluirContaSecao aoExcluir={aoExcluirConta} repositorio={authRepositorio} />
     </section>
   )
 }

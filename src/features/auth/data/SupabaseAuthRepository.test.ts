@@ -291,3 +291,106 @@ describe('SupabaseAuthRepository.definirNovaSenha (US15)', () => {
     )
   })
 })
+
+describe('SupabaseAuthRepository.excluirConta (US17)', () => {
+  function clienteComConta({
+    sessao = { user: { id: 'u1' } } as unknown,
+    arquivos = [{ name: 'perfil-1.jpg' }, { name: 'item-2.png' }] as { name: string }[],
+    erroListar = null as unknown,
+    erroApagar = null as unknown,
+    erroRpc = null as unknown,
+  } = {}) {
+    const list = vi.fn().mockResolvedValue({ data: arquivos, error: erroListar })
+    const remove = vi.fn().mockResolvedValue({ data: [], error: erroApagar })
+    const from = vi.fn(() => ({ list, remove }))
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: erroRpc })
+    const signOut = vi.fn().mockResolvedValue({ error: null })
+    const getSession = vi.fn().mockResolvedValue({ data: { session: sessao } })
+    const client = {
+      auth: { getSession, signOut },
+      storage: { from },
+      rpc,
+    } as unknown as SupabaseClient<Database>
+    return { repo: new SupabaseAuthRepository(client), list, remove, from, rpc, signOut }
+  }
+
+  it('apaga as fotos da pasta da conta, chama a função do servidor e sai só neste aparelho', async () => {
+    const { repo, from, list, remove, rpc, signOut } = clienteComConta()
+
+    await repo.excluirConta()
+
+    expect(from).toHaveBeenCalledWith('fotos')
+    expect(list).toHaveBeenCalledWith('u1', { limit: 1000 })
+    expect(remove).toHaveBeenCalledWith(['u1/perfil-1.jpg', 'u1/item-2.png'])
+    expect(rpc).toHaveBeenCalledWith('excluir_conta')
+    expect(signOut).toHaveBeenCalledWith({ scope: 'local' })
+  })
+
+  it('apaga as fotos antes de excluir a conta', async () => {
+    const { repo, remove, rpc } = clienteComConta()
+
+    await repo.excluirConta()
+
+    expect(remove.mock.invocationCallOrder[0]).toBeLessThan(rpc.mock.invocationCallOrder[0])
+  })
+
+  it('sem fotos, não chama o apagar e exclui a conta do mesmo jeito', async () => {
+    const { repo, remove, rpc } = clienteComConta({ arquivos: [] })
+
+    await repo.excluirConta()
+
+    expect(remove).not.toHaveBeenCalled()
+    expect(rpc).toHaveBeenCalledWith('excluir_conta')
+  })
+
+  it('continua apagando enquanto a pasta vier cheia (mais de uma página de fotos)', async () => {
+    const cheia = Array.from({ length: 1000 }, (_, i) => ({ name: `f${i}.jpg` }))
+    const { repo, list, remove } = clienteComConta()
+    list.mockResolvedValueOnce({ data: cheia, error: null })
+    list.mockResolvedValueOnce({ data: [{ name: 'ultima.jpg' }], error: null })
+
+    await repo.excluirConta()
+
+    expect(list).toHaveBeenCalledTimes(2)
+    expect(remove).toHaveBeenCalledTimes(2)
+  })
+
+  it('pede para entrar na conta quando não há sessão, sem apagar nada', async () => {
+    const { repo, list, rpc } = clienteComConta({ sessao: null })
+
+    const erro = await repo.excluirConta().catch((e) => e)
+
+    expect(erro).toBeInstanceOf(Falha)
+    expect(erro.codigo).toBe('sem_sessao')
+    expect(list).not.toHaveBeenCalled()
+    expect(rpc).not.toHaveBeenCalled()
+  })
+
+  it('não exclui a conta quando não consegue apagar as fotos', async () => {
+    const { repo, rpc, signOut } = clienteComConta({ erroApagar: { message: 'x' } })
+
+    const erro = await repo.excluirConta().catch((e) => e)
+
+    expect(erro).toBeInstanceOf(Falha)
+    expect(erro.mensagem).toBe('Não foi possível excluir a conta. Tente de novo.')
+    expect(rpc).not.toHaveBeenCalled()
+    expect(signOut).not.toHaveBeenCalled()
+  })
+
+  it('não exclui a conta quando não consegue listar as fotos', async () => {
+    const { repo, rpc } = clienteComConta({ erroListar: { message: 'x' } })
+
+    await expect(repo.excluirConta()).rejects.toBeInstanceOf(Falha)
+    expect(rpc).not.toHaveBeenCalled()
+  })
+
+  it('lança Falha e continua logado quando o servidor recusa a exclusão', async () => {
+    const { repo, signOut } = clienteComConta({ erroRpc: { code: '42501', message: 'x' } })
+
+    const erro = await repo.excluirConta().catch((e) => e)
+
+    expect(erro).toBeInstanceOf(Falha)
+    expect(erro.codigo).toBe('42501')
+    expect(signOut).not.toHaveBeenCalled()
+  })
+})
