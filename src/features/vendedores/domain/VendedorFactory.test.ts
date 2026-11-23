@@ -54,8 +54,8 @@ describe('VendedorFactory.doFormulario', () => {
     expect(vendedor.nomeExibicao).toBe('Brownies da Ana')
     expect(vendedor.descricao).toBe('Brownie e café')
     expect(contatos).toEqual([
-      { canal: 'whatsapp', valor: '5586999998888' },
-      { canal: 'telefone', valor: '558632151234' },
+      { canal: 'whatsapp', valor: '5586999998888', visivel: true },
+      { canal: 'telefone', valor: '558632151234', visivel: true },
     ])
   })
 

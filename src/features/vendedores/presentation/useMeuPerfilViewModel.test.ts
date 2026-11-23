@@ -103,8 +103,8 @@ describe('useMeuPerfilViewModel: salvar', () => {
     expect(vendedor.perfilId).toBe('u1')
     expect(vendedor.nomeExibicao).toBe('Doces da Ana')
     expect(enviados).toEqual([
-      { canal: 'whatsapp', valor: '5586988887777' },
-      { canal: 'telefone', valor: '558632151234' },
+      { canal: 'whatsapp', valor: '5586988887777', visivel: true },
+      { canal: 'telefone', valor: '558632151234', visivel: true },
     ])
     expect(fotoEnviada).toBeUndefined()
     expect(result.current.salvo).toBe(true)
