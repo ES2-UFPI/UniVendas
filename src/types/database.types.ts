@@ -304,7 +304,7 @@ export type Database = {
     }
     Functions: {
       buscar_itens: {
-        Args: { texto: string }
+        Args: { categoria?: number; texto?: string }
         Returns: {
           categoria_id: number
           descricao: string
