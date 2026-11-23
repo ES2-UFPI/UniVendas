@@ -239,3 +239,46 @@ describe('useMeuPerfilViewModel: foto', () => {
     expect(segunda).toBeUndefined()
   })
 })
+
+describe('useMeuPerfilViewModel: ocultar números (US19)', () => {
+  it('começa com o que está salvo: o telefone oculto aparece desligado', async () => {
+    const telefoneOculto = new Contato('telefone', '558632151234', false)
+    const perfil = new PerfilVendedor(ana, [contatos[0], telefoneOculto], [], false)
+    const { result } = await aberto(falsos({ buscarPerfil: vi.fn().mockResolvedValue(perfil) }))
+
+    expect(result.current.visiveis).toEqual({ whatsapp: true, telefone: false })
+    expect(result.current.todosOcultos).toBe(false)
+  })
+
+  it('manda o número oculto junto, marcado como oculto (o contato continua salvo, RN06)', async () => {
+    const { result, f } = await aberto()
+    act(() => result.current.mostrarContato('telefone', false))
+
+    await act(() => result.current.salvar())
+
+    const [, enviados] = f.atualizarPerfil.mock.calls[0] as unknown as [unknown, Contato[]]
+    expect(enviados).toEqual([
+      new Contato('whatsapp', '5586999998888', true),
+      new Contato('telefone', '558632151234', false),
+    ])
+  })
+
+  it('avisa quando todos os números ficam ocultos', async () => {
+    const { result } = await aberto()
+
+    act(() => result.current.mostrarContato('whatsapp', false))
+    expect(result.current.todosOcultos).toBe(false)
+
+    act(() => result.current.mostrarContato('telefone', false))
+    expect(result.current.todosOcultos).toBe(true)
+  })
+
+  it('canal em branco não conta como visível', async () => {
+    const { result } = await aberto()
+    act(() => result.current.alterar('telefone', ''))
+
+    act(() => result.current.mostrarContato('whatsapp', false))
+
+    expect(result.current.todosOcultos).toBe(true)
+  })
+})

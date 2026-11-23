@@ -179,3 +179,29 @@ describe('MeuPerfilPage (US14)', () => {
     expect(atualizarPerfil).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('MeuPerfilPage: ocultar números (US19)', () => {
+  it('cada número tem o interruptor "Mostrar", ligado por padrão', async () => {
+    abrir()
+    await nome()
+
+    expect(screen.getByRole('switch', { name: 'Mostrar WhatsApp' })).toBeChecked()
+    expect(screen.getByRole('switch', { name: 'Mostrar Telefone' })).toBeChecked()
+  })
+
+  it('desligar o WhatsApp salva o número como oculto e avisa que só sobra o Chat', async () => {
+    const { atualizarPerfil } = abrir()
+    await nome()
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Mostrar WhatsApp' }))
+
+    expect(screen.getByText('Oculto: só você vê este número')).toBeInTheDocument()
+    expect(screen.getByRole('note')).toHaveTextContent('só vai falar com você pelo Chat')
+
+    fireEvent.click(botao())
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Perfil atualizado.')
+    const [, enviados] = atualizarPerfil.mock.calls[0] as unknown as [unknown, Contato[]]
+    expect(enviados).toEqual([new Contato('whatsapp', '5586999998888', false)])
+  })
+})

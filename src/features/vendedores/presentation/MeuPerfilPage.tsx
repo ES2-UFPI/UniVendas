@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ROTAS } from '../../../core/routes'
 import type { AuthRepository } from '../../auth/domain/AuthRepository'
 import { ExcluirContaSecao } from '../../auth/presentation/ExcluirContaSecao'
+import type { CanalTipo } from '../domain/Contato'
 import type { VendedorRepository } from '../domain/VendedorRepository'
 import { useMeuPerfilViewModel } from './useMeuPerfilViewModel'
 
@@ -44,6 +45,33 @@ function Campo({
         </p>
       )}
     </div>
+  )
+}
+
+/** Interruptor "Mostrar" de um número (US19): desligado, o número fica oculto para os outros. */
+function Mostrar({
+  canal,
+  rotulo,
+  ligado,
+  aoMudar,
+}: {
+  canal: CanalTipo
+  rotulo: string
+  ligado: boolean
+  aoMudar: (canal: CanalTipo, mostrar: boolean) => void
+}) {
+  return (
+    <label className="flex items-center gap-2 text-sm text-gray-700">
+      <input
+        type="checkbox"
+        role="switch"
+        className="h-4 w-4 accent-green-600"
+        checked={ligado}
+        onChange={(e) => aoMudar(canal, e.target.checked)}
+        aria-label={`Mostrar ${rotulo}`}
+      />
+      {ligado ? 'Mostrar no meu perfil e no mapa' : 'Oculto: só você vê este número'}
+    </label>
   )
 }
 
@@ -176,6 +204,12 @@ export function MeuPerfilPage({
                 aria-describedby={erros.whatsapp ? 'whatsapp-erro' : undefined}
                 placeholder="(86) 99999-8888"
               />
+              <Mostrar
+                canal="whatsapp"
+                rotulo="WhatsApp"
+                ligado={vm.visiveis.whatsapp}
+                aoMudar={vm.mostrarContato}
+              />
             </Campo>
             <Campo id="telefone" rotulo="Telefone" erro={erros.telefone}>
               <input
@@ -189,8 +223,19 @@ export function MeuPerfilPage({
                 aria-describedby={erros.telefone ? 'telefone-erro' : undefined}
                 placeholder="(86) 3215-1234"
               />
+              <Mostrar
+                canal="telefone"
+                rotulo="Telefone"
+                ligado={vm.visiveis.telefone}
+                aoMudar={vm.mostrarContato}
+              />
             </Campo>
             {erros.contato && <p className="text-sm text-red-700">{erros.contato}</p>}
+            {vm.todosOcultos && (
+              <p role="note" className="rounded-lg bg-purple-50 p-3 text-sm text-purple-800">
+                Todos os seus números estão ocultos. Quem compra só vai falar com você pelo Chat.
+              </p>
+            )}
           </fieldset>
 
           {vm.erroGeral && (
