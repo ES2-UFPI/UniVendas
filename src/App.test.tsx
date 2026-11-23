@@ -214,6 +214,21 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Meus itens' })).toBeInTheDocument()
   })
 
+  it('protege também a tela de busca', () => {
+    abrir('/busca', null)
+    expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
+  })
+
+  it('o menu leva à tela de busca (US11)', () => {
+    abrir('/', ana)
+    expect(screen.getByRole('link', { name: 'Buscar' })).toHaveAttribute('href', '/busca')
+    cleanup()
+
+    abrir('/busca', ana)
+    expect(screen.getByRole('heading', { name: 'Buscar' })).toBeInTheDocument()
+    expect(screen.getByRole('search')).toBeInTheDocument()
+  })
+
   it('abre a conversa pela rota /conversa/:id (US18)', async () => {
     abrir(rotaConversa('c1'), ana)
     expect(await screen.findByRole('heading', { name: 'Café do Leo' })).toBeInTheDocument()

@@ -64,7 +64,7 @@ describe('Layout (US20)', () => {
 describe('abas por modo (US20, RN02)', () => {
   it('quem não tem perfil de vendedor vê as abas do consumidor, com "Quero vender", e sem troca de modo', () => {
     abrir(consumidor)
-    expect(abas()).toEqual(['Mapa', 'Conversas', 'Quero vender'])
+    expect(abas()).toEqual(['Mapa', 'Buscar', 'Conversas', 'Quero vender'])
     expect(screen.queryByRole('group', { name: 'Modo de uso' })).not.toBeInTheDocument()
   })
 
@@ -77,7 +77,7 @@ describe('abas por modo (US20, RN02)', () => {
   it('o vendedor troca para consumidor sem sair da conta, e o modo fica guardado', () => {
     abrir(vendedor)
     fireEvent.click(screen.getByRole('button', { name: 'Consumidor' }))
-    expect(abas()).toEqual(['Mapa', 'Conversas'])
+    expect(abas()).toEqual(['Mapa', 'Buscar', 'Conversas'])
     expect(screen.getByRole('button', { name: 'Consumidor' })).toHaveAttribute(
       'aria-pressed',
       'true',
@@ -88,7 +88,7 @@ describe('abas por modo (US20, RN02)', () => {
   it('reabre no modo que ficou guardado', () => {
     localStorage.setItem('univendas:modo:u2', 'consumidor')
     abrir(vendedor)
-    expect(abas()).toEqual(['Mapa', 'Conversas'])
+    expect(abas()).toEqual(['Mapa', 'Buscar', 'Conversas'])
   })
 
   it('voltar ao modo vendedor traz as abas de vendedor de volta', () => {

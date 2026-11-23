@@ -10,6 +10,7 @@ export const ROTAS = {
   meuPerfil: '/meu-perfil',
   perfilVendedor: '/vendedor/:id',
   meusItens: '/meus-itens',
+  busca: '/busca',
   conversas: '/conversas',
   conversa: '/conversa/:id',
 } as const

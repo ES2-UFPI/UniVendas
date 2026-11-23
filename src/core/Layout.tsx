@@ -50,6 +50,17 @@ const TODAS_AS_ABAS: Aba[] = [
     ),
   },
   {
+    para: ROTAS.busca,
+    id: 'busca',
+    rotulo: 'Buscar',
+    icone: (
+      <>
+        <circle cx="11" cy="11" r="6" />
+        <path d="m20 20-4.5-4.5" />
+      </>
+    ),
+  },
+  {
     para: ROTAS.queroVender,
     id: 'queroVender',
     rotulo: 'Quero vender',
@@ -103,8 +114,8 @@ const TODAS_AS_ABAS: Aba[] = [
   },
 ]
 
-/** Ordem das abas de cada modo. O consumidor ainda ganha a aba "Buscar" quando a busca (US11) existir. */
-const ABAS_DO_CONSUMIDOR = ['mapa', 'conversas']
+/** Ordem das abas de cada modo. */
+const ABAS_DO_CONSUMIDOR = ['mapa', 'busca', 'conversas']
 const ABAS_DO_VENDEDOR = ['painel', 'meusItens', 'meuPerfil', 'conversas']
 
 /**
