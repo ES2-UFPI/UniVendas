@@ -177,6 +177,20 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
   })
 
+  it('protege também a tela "Meu perfil"', () => {
+    abrir('/meu-perfil', null)
+    expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
+  })
+
+  it('o menu leva à tela "Meu perfil" (US14)', () => {
+    abrir('/', ana)
+    expect(screen.getByRole('link', { name: 'Meu perfil' })).toHaveAttribute('href', '/meu-perfil')
+    cleanup()
+
+    abrir('/meu-perfil', ana)
+    expect(screen.getByRole('heading', { name: 'Meu perfil' })).toBeInTheDocument()
+  })
+
   it('protege também a tela "Meus itens"', () => {
     abrir('/meus-itens', null)
     expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument()

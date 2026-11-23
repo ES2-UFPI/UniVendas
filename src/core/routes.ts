@@ -7,6 +7,7 @@ export const ROTAS = {
   novaSenha: '/nova-senha',
   queroVender: '/quero-vender',
   painel: '/painel',
+  meuPerfil: '/meu-perfil',
   perfilVendedor: '/vendedor/:id',
   meusItens: '/meus-itens',
   conversa: '/conversa/:id',

@@ -25,6 +25,7 @@ import { useMapaViewModel } from './features/mapa/presentation/useMapaViewModel'
 import type { PresencaRepository } from './features/presenca/domain/PresencaRepository'
 import { PainelVendedorPage } from './features/presenca/presentation/PainelVendedorPage'
 import type { VendedorRepository } from './features/vendedores/domain/VendedorRepository'
+import { MeuPerfilPage } from './features/vendedores/presentation/MeuPerfilPage'
 import { PerfilVendedorPage } from './features/vendedores/presentation/PerfilVendedorPage'
 import { QueroVenderPage } from './features/vendedores/presentation/QueroVenderPage'
 
@@ -162,6 +163,12 @@ function QueroVender() {
   return <QueroVenderPage perfilId={usuario?.id ?? null} />
 }
 
+/** "Meu perfil" (US14): o vendedor edita o próprio perfil. */
+function MeuPerfil({ repositorio }: { repositorio?: VendedorRepository }) {
+  const usuario = useSessaoStore((s) => s.usuario)
+  return <MeuPerfilPage perfilId={usuario?.id ?? null} repositorio={repositorio} />
+}
+
 /** Perfil do vendedor (US10): o id vem do endereço `/vendedor/:id`. */
 function PerfilVendedor({ repositorio }: { repositorio?: VendedorRepository }) {
   const { id = '' } = useParams()
@@ -228,6 +235,7 @@ export function AppRotas({
             path={ROTAS.painel}
             element={<PainelVendedorPage repositorio={presencaRepositorio} />}
           />
+          <Route path={ROTAS.meuPerfil} element={<MeuPerfil repositorio={vendedorRepositorio} />} />
           <Route
             path={ROTAS.perfilVendedor}
             element={<PerfilVendedor repositorio={vendedorRepositorio} />}

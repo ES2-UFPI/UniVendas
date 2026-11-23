@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  formatarTelefone,
   normalizarTelefone,
   telefoneValido,
   validarCadastroVendedor,
@@ -24,6 +25,25 @@ describe('normalizarTelefone', () => {
 
   it('aceita telefone fixo com 8 dígitos', () => {
     expect(normalizarTelefone('86 3215-1234')).toBe('558632151234')
+  })
+})
+
+describe('formatarTelefone', () => {
+  it('mostra o celular guardado como a pessoa digita', () => {
+    expect(formatarTelefone('5586999998888')).toBe('(86) 99999-8888')
+  })
+
+  it('mostra o fixo guardado como a pessoa digita', () => {
+    expect(formatarTelefone('558632151234')).toBe('(86) 3215-1234')
+  })
+
+  it('devolve como veio o que não tem o formato esperado, inclusive o vazio', () => {
+    expect(formatarTelefone('')).toBe('')
+    expect(formatarTelefone('123')).toBe('123')
+  })
+
+  it('o resultado volta ao valor guardado quando é normalizado', () => {
+    expect(normalizarTelefone(formatarTelefone('5586999998888'))).toBe('5586999998888')
   })
 })
 

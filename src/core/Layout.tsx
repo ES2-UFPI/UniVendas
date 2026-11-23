@@ -28,6 +28,9 @@ export function Layout() {
           <NavLink to={ROTAS.meusItens} className={estiloLink}>
             Meus itens
           </NavLink>
+          <NavLink to={ROTAS.meuPerfil} className={estiloLink}>
+            Meu perfil
+          </NavLink>
         </nav>
         <div className="flex items-center gap-2">
           {usuario && <span className="text-sm text-gray-600">{usuario.nome}</span>}
