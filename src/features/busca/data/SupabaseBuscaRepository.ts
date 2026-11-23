@@ -40,11 +40,16 @@ export class SupabaseBuscaRepository implements BuscaRepository {
 
   async buscar(filtro: FiltroBusca): Promise<ResultadoBusca[]> {
     const texto = filtro.texto.trim()
-    // O servidor também devolve vazio, mas assim nem gasta a chamada.
-    if (texto.length < MINIMO_LETRAS_BUSCA) return []
+    const categoria = filtro.categoriaId ?? null
+    // Sem categoria, o texto curto traria quase tudo. O servidor também devolve vazio, mas assim nem gasta a chamada.
+    if (categoria === null && texto.length < MINIMO_LETRAS_BUSCA) return []
 
-    // A função ignora maiúsculas e acentos e já ordena: disponíveis primeiro, esgotados depois (RN09).
-    const { data, error } = await this.client.rpc('buscar_itens', { texto })
+    // A função ignora maiúsculas e acentos, desce pelas categorias filhas e já ordena:
+    // disponíveis primeiro, esgotados depois (RN09).
+    const { data, error } = await this.client.rpc(
+      'buscar_itens',
+      categoria === null ? { texto } : { texto, categoria },
+    )
 
     if (error || !data) {
       throw new Falha(

@@ -81,6 +81,33 @@ describe('SupabaseBuscaRepository.buscar', () => {
     expect(rpc).not.toHaveBeenCalled()
   })
 
+  it('manda a categoria escolhida junto com o texto (US12)', async () => {
+    const { repo, rpc } = clienteFalso({ data: [linha], error: null })
+
+    await repo.buscar({ texto: ' cenoura ', categoriaId: 3 })
+
+    expect(rpc).toHaveBeenCalledWith('buscar_itens', { texto: 'cenoura', categoria: 3 })
+  })
+
+  it('com categoria, busca mesmo sem texto: traz todos os itens dela e das filhas', async () => {
+    const { repo, rpc } = clienteFalso({ data: [linha], error: null })
+
+    const resultados = await repo.buscar({ texto: '', categoriaId: 1 })
+
+    expect(rpc).toHaveBeenCalledWith('buscar_itens', { texto: '', categoria: 1 })
+    expect(resultados).toHaveLength(1)
+  })
+
+  it('categoria nula é o mesmo que sem categoria', async () => {
+    const { repo, rpc } = clienteFalso({ data: [], error: null })
+
+    await repo.buscar({ texto: 'brownie', categoriaId: null })
+    await repo.buscar({ texto: 'b', categoriaId: null })
+
+    expect(rpc).toHaveBeenCalledOnce()
+    expect(rpc).toHaveBeenCalledWith('buscar_itens', { texto: 'brownie' })
+  })
+
   it('lança Falha quando a busca dá erro', async () => {
     const { repo } = clienteFalso({ data: null, error: { code: '500' } })
 
