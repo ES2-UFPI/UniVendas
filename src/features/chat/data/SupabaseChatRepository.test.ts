@@ -134,6 +134,24 @@ describe('SupabaseChatRepository.abrirConversa', () => {
   })
 })
 
+describe('SupabaseChatRepository.buscarConversa', () => {
+  it('busca a conversa pelo id, com o nome dos dois lados', async () => {
+    const busca = consulta(ok(linhaConversa('c1', '2026-11-23T10:00:00Z')))
+    const { repo } = clienteFalso([busca])
+
+    const conversa = await repo.buscarConversa('c1')
+
+    expect(busca.eq).toHaveBeenCalledWith('id', 'c1')
+    expect(conversa?.nomeDaOutraPessoa('leo')).toBe('Ana')
+  })
+
+  it('devolve null quando a conversa não existe ou não é de quem está logado', async () => {
+    const { repo } = clienteFalso([consulta(ok(null))])
+
+    await expect(repo.buscarConversa('c9')).resolves.toBeNull()
+  })
+})
+
 describe('SupabaseChatRepository.listarConversas', () => {
   it('traz só a última mensagem de cada conversa e ordena pela atividade mais recente', async () => {
     const lista = consulta(

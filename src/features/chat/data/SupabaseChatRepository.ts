@@ -101,7 +101,7 @@ export class SupabaseChatRepository implements ChatRepository {
     return perfilId
   }
 
-  private async buscarConversa(consumidorId: string, vendedorId: string): Promise<Conversa | null> {
+  private async buscarDoPar(consumidorId: string, vendedorId: string): Promise<Conversa | null> {
     const { data, error } = await this.client
       .from('conversas')
       .select(COLUNAS_CONVERSA)
@@ -116,7 +116,7 @@ export class SupabaseChatRepository implements ChatRepository {
     const consumidorId = await this.perfilLogado()
 
     // Uma conversa por par (RN22): se já existe, reabre a mesma.
-    const existente = await this.buscarConversa(consumidorId, vendedorId)
+    const existente = await this.buscarDoPar(consumidorId, vendedorId)
     if (existente) return existente
 
     const { data, error } = await this.client
@@ -127,7 +127,7 @@ export class SupabaseChatRepository implements ChatRepository {
 
     if (error?.code === '23505') {
       // Outra aba criou a mesma conversa entre a busca e o insert: usa a que ficou gravada.
-      const criada = await this.buscarConversa(consumidorId, vendedorId)
+      const criada = await this.buscarDoPar(consumidorId, vendedorId)
       if (criada) return criada
     }
     if (error?.code === '42501') {
@@ -138,6 +138,16 @@ export class SupabaseChatRepository implements ChatRepository {
     }
     if (error || !data) throw paraFalha(error ?? {}, MENSAGEM_ABRIR)
     return paraConversa(data as unknown as LinhaConversa)
+  }
+
+  async buscarConversa(conversaId: string): Promise<Conversa | null> {
+    const { data, error } = await this.client
+      .from('conversas')
+      .select(COLUNAS_CONVERSA)
+      .eq('id', conversaId)
+      .maybeSingle()
+    if (error) throw paraFalha(error, MENSAGEM_ABRIR)
+    return data ? paraConversa(data as unknown as LinhaConversa) : null
   }
 
   async listarConversas(): Promise<Conversa[]> {
