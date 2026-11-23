@@ -43,18 +43,21 @@ export type Database = {
           id: string
           valor: string
           vendedor_id: string
+          visivel: boolean
         }
         Insert: {
           canal: string
           id?: string
           valor: string
           vendedor_id: string
+          visivel?: boolean
         }
         Update: {
           canal?: string
           id?: string
           valor?: string
           vendedor_id?: string
+          visivel?: boolean
         }
         Relationships: [
           {
