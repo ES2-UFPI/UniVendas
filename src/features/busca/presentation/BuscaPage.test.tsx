@@ -1,6 +1,7 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { Categoria } from '../../itens/domain/Categoria'
 import { Item } from '../../itens/domain/Item'
 import type { BuscaRepository, ResultadoBusca } from '../domain/BuscaRepository'
 import { BuscaPage } from './BuscaPage'
@@ -18,13 +19,37 @@ const esgotado: ResultadoBusca = {
   noCampusAgora: false,
 }
 
+const categorias: Categoria[] = [
+  { id: 1, nome: 'Alimentação', categoriaPaiId: null, folha: false },
+  { id: 2, nome: 'Outros produtos', categoriaPaiId: null, folha: false },
+  { id: 3, nome: 'Doces', categoriaPaiId: 1, folha: false },
+  { id: 4, nome: 'Salgados', categoriaPaiId: 1, folha: false },
+  { id: 7, nome: 'Brownie', categoriaPaiId: 3, folha: true },
+]
+
 function abrir(buscar = vi.fn().mockResolvedValue([disponivel, esgotado])) {
   render(
     <MemoryRouter>
-      <BuscaPage repositorio={{ buscar } as BuscaRepository} />
+      <BuscaPage
+        repositorio={{ buscar } as BuscaRepository}
+        categoriasRepositorio={{ listarCategorias: vi.fn().mockResolvedValue(categorias) }}
+      />
     </MemoryRouter>,
   )
   return { buscar }
+}
+
+/** Clica numa categoria e espera a busca dela terminar. */
+async function entrarEm(nome: string) {
+  fireEvent.click(await screen.findByRole('button', { name: nome }))
+  await screen.findByRole('button', { name: 'Buscar' })
+}
+
+function trilha() {
+  const nav = screen.getByRole('navigation', { name: 'Categorias' })
+  return within(within(nav).getAllByRole('list')[0])
+    .getAllByRole('listitem')
+    .map((li) => li.textContent?.replace('›', '').trim())
 }
 
 function buscarPor(texto: string) {
@@ -51,7 +76,8 @@ describe('BuscaPage', () => {
     abrir()
     buscarPor('brownie')
 
-    const linhas = await screen.findAllByRole('listitem')
+    const lista = await screen.findByRole('list', { name: 'Resultados da busca' })
+    const linhas = within(lista).getAllByRole('listitem')
     expect(within(linhas[0]).getByRole('link', { name: 'Doces da Ana' })).toHaveAttribute(
       'href',
       '/vendedor/v1',
@@ -73,5 +99,65 @@ describe('BuscaPage', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Digite pelo menos 2 letras.')
     expect(buscar).not.toHaveBeenCalled()
+  })
+
+  it('navega Alimentação › Doces › Brownie, vendo os itens de cada nível (US12)', async () => {
+    const { buscar } = abrir()
+
+    await entrarEm('Alimentação')
+    expect(buscar).toHaveBeenLastCalledWith({ texto: '', categoriaId: 1 })
+    expect(await screen.findByRole('list', { name: 'Resultados da busca' })).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('list', { name: 'Categorias dentro de Alimentação' }))
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual(['Doces', 'Salgados'])
+
+    await entrarEm('Doces')
+    expect(buscar).toHaveBeenLastCalledWith({ texto: '', categoriaId: 3 })
+
+    await entrarEm('Brownie')
+    expect(buscar).toHaveBeenLastCalledWith({ texto: '', categoriaId: 7 })
+    expect(trilha()).toEqual(['Todas', 'Alimentação', 'Doces', 'Brownie'])
+    expect(screen.getByText('Brownie', { selector: '[aria-current="page"]' })).toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: /Categorias dentro de/ })).not.toBeInTheDocument()
+  })
+
+  it('a trilha volta para um nível de cima e para "Todas"', async () => {
+    const { buscar } = abrir()
+    await entrarEm('Alimentação')
+    await entrarEm('Doces')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Alimentação' }))
+    await screen.findByRole('list', { name: 'Categorias dentro de Alimentação' })
+    expect(buscar).toHaveBeenLastCalledWith({ texto: '', categoriaId: 1 })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Todas' }))
+    expect(await screen.findByRole('list', { name: 'Categorias' })).toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'Resultados da busca' })).not.toBeInTheDocument()
+  })
+
+  it('com categoria escolhida, o texto busca dentro dela', async () => {
+    const { buscar } = abrir()
+    await entrarEm('Alimentação')
+    await entrarEm('Doces')
+
+    fireEvent.change(screen.getByLabelText('Produto ou vendedor em Doces'), {
+      target: { value: 'cenoura' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Buscar' }))
+
+    await waitFor(() =>
+      expect(buscar).toHaveBeenLastCalledWith({ texto: 'cenoura', categoriaId: 3 }),
+    )
+  })
+
+  it('avisa quando a categoria não tem itens', async () => {
+    abrir(vi.fn().mockResolvedValue([]))
+    await entrarEm('Outros produtos')
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Nenhum item em Outros produtos por enquanto.',
+    )
   })
 })

@@ -54,6 +54,9 @@ const chatRepositorio = {
   observarMensagens: vi.fn(() => () => {}),
 } as ChatRepository
 
+// Árvore de categorias falsa: a busca não pode ler o Supabase de verdade.
+const categoriasRepositorio = { listarCategorias: vi.fn().mockResolvedValue([]) }
+
 /** Abre o app no endereço `url`, com a sessão já definida. */
 function abrir(url: string, usuario: Usuario | null) {
   useSessaoStore.setState({ usuario, carregando: false })
@@ -63,6 +66,7 @@ function abrir(url: string, usuario: Usuario | null) {
         presencaRepositorio={presencaRepositorio}
         vendedorRepositorio={vendedorRepositorio}
         chatRepositorio={chatRepositorio}
+        categoriasRepositorio={categoriasRepositorio}
       />
     </MemoryRouter>,
   )

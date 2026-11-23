@@ -13,6 +13,7 @@ import { RotaProtegida, RotaSoVisitante } from './core/RotaProtegida'
 import { ROTAS } from './core/routes'
 import { useSessaoStore } from './core/sessaoStore'
 import { CadastroPage } from './features/auth/presentation/CadastroPage'
+import type { FonteCategorias } from './features/busca/domain/navegacaoCategorias'
 import { BuscaPage } from './features/busca/presentation/BuscaPage'
 import { EsqueciSenhaPage } from './features/auth/presentation/EsqueciSenhaPage'
 import { LoginPage } from './features/auth/presentation/LoginPage'
@@ -230,6 +231,8 @@ interface AppRotasProps {
   vendedorRepositorio?: VendedorRepository
   /** Só para os testes: repositório do chat falso (sem rede). */
   chatRepositorio?: ChatRepository
+  /** Só para os testes: árvore de categorias falsa, para a busca não ler o Supabase. */
+  categoriasRepositorio?: FonteCategorias
 }
 
 /** As rotas do app, sem o roteador (os testes usam um `MemoryRouter` em volta). */
@@ -237,6 +240,7 @@ export function AppRotas({
   presencaRepositorio,
   vendedorRepositorio,
   chatRepositorio,
+  categoriasRepositorio,
 }: AppRotasProps = {}) {
   return (
     <Routes>
@@ -260,7 +264,10 @@ export function AppRotas({
             element={<PerfilVendedor repositorio={vendedorRepositorio} />}
           />
           <Route path={ROTAS.meusItens} element={<MeusItens />} />
-          <Route path={ROTAS.busca} element={<BuscaPage />} />
+          <Route
+            path={ROTAS.busca}
+            element={<BuscaPage categoriasRepositorio={categoriasRepositorio} />}
+          />
           <Route path={ROTAS.conversas} element={<Conversas repositorio={chatRepositorio} />} />
           <Route path={ROTAS.conversa} element={<Conversa repositorio={chatRepositorio} />} />
         </Route>
