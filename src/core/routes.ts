@@ -9,6 +9,7 @@ export const ROTAS = {
   painel: '/painel',
   perfilVendedor: '/vendedor/:id',
   meusItens: '/meus-itens',
+  conversas: '/conversas',
   conversa: '/conversa/:id',
 } as const
 

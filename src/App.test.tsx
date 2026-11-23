@@ -47,7 +47,7 @@ const chatRepositorio = {
   buscarConversa: vi.fn((id: string) =>
     Promise.resolve(new Conversa(id, 'u1', 'Ana', 'v1', 'u2', 'Café do Leo', new Date())),
   ),
-  listarConversas: vi.fn(),
+  listarConversas: vi.fn().mockResolvedValue([]),
   listarMensagens: vi.fn().mockResolvedValue([]),
   enviar: vi.fn(),
   observarMensagens: vi.fn(() => () => {}),
@@ -194,6 +194,15 @@ describe('App', () => {
   it('abre a conversa pela rota /conversa/:id (US18)', async () => {
     abrir(rotaConversa('c1'), ana)
     expect(await screen.findByRole('heading', { name: 'Café do Leo' })).toBeInTheDocument()
+  })
+
+  it('o menu leva à tela "Conversas" (US18)', async () => {
+    abrir('/', ana)
+    expect(screen.getByRole('link', { name: 'Conversas' })).toHaveAttribute('href', '/conversas')
+    cleanup()
+
+    abrir('/conversas', ana)
+    expect(await screen.findByText(/Você ainda não tem conversas/)).toBeInTheDocument()
   })
 
   it('protege também a tela da conversa', () => {
