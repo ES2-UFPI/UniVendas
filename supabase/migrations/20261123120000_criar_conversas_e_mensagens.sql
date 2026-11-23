@@ -105,5 +105,21 @@ revoke insert, update, delete, truncate on public.mensagens from authenticated;
 grant insert (conversa_id, autor_id, texto) on public.mensagens to authenticated;
 revoke all on public.mensagens from anon;
 
+-- A tela "Conversas" do vendedor mostra o nome de quem falou com ele. Pela regra de perfis, cada um só lê
+-- o próprio perfil; esta política libera também o perfil de quem tem conversa com um vendedor seu.
+-- O consumidor não precisa dela: o nome do vendedor vem de vendedores, que todo logado já lê.
+create policy "perfis: vendedor lê quem conversa com ele"
+  on public.perfis for select
+  to authenticated
+  using (
+    exists (
+      select 1
+      from public.conversas c
+      join public.vendedores v on v.id = c.vendedor_id
+      where c.consumidor_id = perfis.id
+        and v.perfil_id = (select auth.uid())
+    )
+  );
+
 -- Realtime: a tela da conversa recebe a mensagem nova sem recarregar. O Realtime respeita a política de leitura acima.
 alter publication supabase_realtime add table public.mensagens;
