@@ -1,13 +1,20 @@
 @import 'tailwindcss';
 
-/* Cores da marca, usadas como classes do Tailwind: bg-marca-700, text-tinta, border-borda... */
+/* Cores e fonte da marca, usadas como classes do Tailwind: bg-marca-700, text-tinta, border-linha... */
 @theme {
+  --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+
   --color-marca-50: #d8f4d8;
   --color-marca-500: #16a34a;
+  --color-marca-600: #15803d; /* verde das ações: links, aba e atalho escolhidos */
   --color-marca-700: #15753a;
   --color-marca-800: #135631;
-  --color-marca-900: #174c2c;
-  --color-tinta: #152b21;
+  --color-marca-900: #14532d; /* nome UniVendas da logo */
+  --color-ouro: #eab308; /* dobra do meio da logo */
+  --color-tinta: #192c22;
   --color-tinta-suave: #4c5b53;
   --color-borda: #86968b;
+  --color-campo: #f3f6f3; /* fundo de campos */
+  --color-cartao: #f5f8f4; /* fundo de cartões e atalhos */
+  --color-linha: #e3ebe5; /* divisórias e bordas leves */
 }
