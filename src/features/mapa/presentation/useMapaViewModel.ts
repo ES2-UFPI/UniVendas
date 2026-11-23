@@ -26,11 +26,14 @@ function paraMarcador(presenca: Presenca, perfilId: string | null): Marcador {
     nome: presenca.nomeVendedor,
     referencia: presenca.referencia,
     // O ViewModel já entrega o link pronto: a tela só desenha os botões (US07, RN20).
-    contatos: presenca.contatos.map((contato) => ({
-      canal: contato.canal,
-      rotulo: contatoService.rotulo(contato),
-      link: contatoService.gerarLink(contato),
-    })),
+    // Só os números visíveis viram botão; o dono vê no próprio balão o mesmo que os outros (US19).
+    contatos: presenca.contatos
+      .filter((contato) => contato.visivel)
+      .map((contato) => ({
+        canal: contato.canal,
+        rotulo: contatoService.rotulo(contato),
+        link: contatoService.gerarLink(contato),
+      })),
     meu: perfilId !== null && presenca.perfilId === perfilId,
   }
 }

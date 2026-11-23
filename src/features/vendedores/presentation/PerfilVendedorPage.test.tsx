@@ -148,4 +148,39 @@ describe('PerfilVendedorPage (US10)', () => {
     expect(await screen.findByRole('heading', { name: 'Brownies da Ana' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Chat' })).not.toBeInTheDocument()
   })
+
+  it('não mostra o número oculto; com todos ocultos, fica só o "Chat" (US19)', async () => {
+    const ocultos = [
+      new Contato('whatsapp', '5586999990000', false),
+      new Contato('telefone', '5586988880000', false),
+    ]
+    render(
+      <PerfilVendedorPage
+        id="v1"
+        meuPerfilId="u9"
+        repositorio={repositorio(() => Promise.resolve(perfil(true, ocultos)))}
+      />,
+    )
+
+    expect(await screen.findByRole('button', { name: 'Chat' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'WhatsApp' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Ligar' })).not.toBeInTheDocument()
+  })
+
+  it('no próprio perfil, o dono vê só os números visíveis, como os outros veem (US19)', async () => {
+    const contatos = [
+      new Contato('whatsapp', '5586999990000', false),
+      new Contato('telefone', '5586988880000'),
+    ]
+    render(
+      <PerfilVendedorPage
+        id="v1"
+        meuPerfilId="u1"
+        repositorio={repositorio(() => Promise.resolve(perfil(true, contatos)))}
+      />,
+    )
+
+    expect(await screen.findByRole('link', { name: 'Ligar' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'WhatsApp' })).not.toBeInTheDocument()
+  })
 })
