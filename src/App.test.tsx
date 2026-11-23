@@ -8,7 +8,9 @@ import type { PresencaRepository } from './features/presenca/domain/PresencaRepo
 import { PerfilVendedor } from './features/vendedores/domain/PerfilVendedor'
 import { VendedorAmbulante } from './features/vendedores/domain/Vendedor'
 import type { VendedorRepository } from './features/vendedores/domain/VendedorRepository'
-import { rotaPerfilVendedor } from './core/routes'
+import { rotaConversa, rotaPerfilVendedor } from './core/routes'
+import type { ChatRepository } from './features/chat/domain/ChatRepository'
+import { Conversa } from './features/chat/domain/Conversa'
 
 afterEach(() => {
   cleanup()
@@ -39,6 +41,18 @@ const vendedorRepositorio = {
   ),
 } as VendedorRepository
 
+// Repositório do chat falso: a conversa não pode abrir canal no Supabase de verdade.
+const chatRepositorio = {
+  abrirConversa: vi.fn(),
+  buscarConversa: vi.fn((id: string) =>
+    Promise.resolve(new Conversa(id, 'u1', 'Ana', 'v1', 'u2', 'Café do Leo', new Date())),
+  ),
+  listarConversas: vi.fn().mockResolvedValue([]),
+  listarMensagens: vi.fn().mockResolvedValue([]),
+  enviar: vi.fn(),
+  observarMensagens: vi.fn(() => () => {}),
+} as ChatRepository
+
 /** Abre o app no endereço `url`, com a sessão já definida. */
 function abrir(url: string, usuario: Usuario | null) {
   useSessaoStore.setState({ usuario, carregando: false })
@@ -47,6 +61,7 @@ function abrir(url: string, usuario: Usuario | null) {
       <AppRotas
         presencaRepositorio={presencaRepositorio}
         vendedorRepositorio={vendedorRepositorio}
+        chatRepositorio={chatRepositorio}
       />
     </MemoryRouter>,
   )
@@ -162,6 +177,28 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
   })
 
+  it('a tela "Meu perfil" tem o "Excluir minha conta", com confirmação (US17)', () => {
+    abrir('/meu-perfil', ana)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Excluir minha conta' }))
+
+    expect(screen.getByRole('alertdialog', { name: 'Excluir minha conta?' })).toBeInTheDocument()
+  })
+
+  it('protege também a tela "Meu perfil"', () => {
+    abrir('/meu-perfil', null)
+    expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
+  })
+
+  it('o menu leva à tela "Meu perfil" (US14)', () => {
+    abrir('/', ana)
+    expect(screen.getByRole('link', { name: 'Meu perfil' })).toHaveAttribute('href', '/meu-perfil')
+    cleanup()
+
+    abrir('/meu-perfil', ana)
+    expect(screen.getByRole('heading', { name: 'Meu perfil' })).toBeInTheDocument()
+  })
+
   it('protege também a tela "Meus itens"', () => {
     abrir('/meus-itens', null)
     expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
@@ -189,6 +226,25 @@ describe('App', () => {
     abrir('/busca', ana)
     expect(screen.getByRole('heading', { name: 'Buscar' })).toBeInTheDocument()
     expect(screen.getByRole('search')).toBeInTheDocument()
+  })
+
+  it('abre a conversa pela rota /conversa/:id (US18)', async () => {
+    abrir(rotaConversa('c1'), ana)
+    expect(await screen.findByRole('heading', { name: 'Café do Leo' })).toBeInTheDocument()
+  })
+
+  it('o menu leva à tela "Conversas" (US18)', async () => {
+    abrir('/', ana)
+    expect(screen.getByRole('link', { name: 'Conversas' })).toHaveAttribute('href', '/conversas')
+    cleanup()
+
+    abrir('/conversas', ana)
+    expect(await screen.findByText(/Você ainda não tem conversas/)).toBeInTheDocument()
+  })
+
+  it('protege também a tela da conversa', () => {
+    abrir(rotaConversa('c1'), null)
+    expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
   })
 
   it('endereço desconhecido volta para o mapa', () => {

@@ -9,6 +9,8 @@ import { Link } from 'react-router-dom'
 import { Falha } from '../../../core/falha'
 import { LocalizacaoService, type LatLng } from '../../../core/localizacaoService'
 import { rotaPerfilVendedor } from '../../../core/routes'
+import { BotaoChat } from '../../chat/presentation/BotaoChat'
+import type { ChatRepository } from '../../chat/domain/ChatRepository'
 import type { CanalTipo } from '../../vendedores/domain/Contato'
 import { CENTRO_DO_CAMPUS, ZOOM_INICIAL } from '../domain/campus'
 
@@ -27,6 +29,8 @@ export interface Marcador {
   referencia?: string | null
   /** Botões de contato, com o link já montado pelo `ContatoService`. Sem contato, sem botão. */
   contatos?: BotaoContato[]
+  /** `true` quando o marcador é do próprio usuário: o balão não mostra "Chat" (RN22). */
+  meu?: boolean
 }
 
 export interface BotaoContato {
@@ -58,11 +62,17 @@ function Recentralizar({ ponto }: { ponto: LatLng | null }) {
 interface MapaPageProps {
   marcadores?: Marcador[]
   localizacao?: Pick<LocalizacaoService, 'posicaoAtual'>
+  /** Só para os testes: repositório do chat falso. */
+  chatRepositorio?: ChatRepository
 }
 
 const servicoPadrao = new LocalizacaoService()
 
-export function MapaPage({ marcadores = [], localizacao = servicoPadrao }: MapaPageProps) {
+export function MapaPage({
+  marcadores = [],
+  localizacao = servicoPadrao,
+  chatRepositorio,
+}: MapaPageProps) {
   const [minhaPosicao, setMinhaPosicao] = useState<LatLng | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [localizando, setLocalizando] = useState(false)
@@ -105,9 +115,17 @@ export function MapaPage({ marcadores = [], localizacao = servicoPadrao }: MapaP
             <Popup>
               <p className="!m-0 font-semibold text-gray-900">{m.nome}</p>
               {m.referencia && <p className="!m-0 mt-1 text-sm text-gray-600">{m.referencia}</p>}
-              {m.contatos && m.contatos.length > 0 && (
+              {((m.contatos && m.contatos.length > 0) || !m.meu) && (
                 <div className="mt-2 flex gap-2">
-                  {m.contatos.map((c) => (
+                  {/* "Chat" abre a conversa dentro do app (US18); não aparece no próprio marcador (RN22). */}
+                  {!m.meu && (
+                    <BotaoChat
+                      vendedorId={m.id}
+                      className="px-3 py-1 text-sm"
+                      repositorio={chatRepositorio}
+                    />
+                  )}
+                  {m.contatos?.map((c) => (
                     // O WhatsApp abre em outra aba; o tel: abre o discador do celular.
                     <a
                       key={c.canal}

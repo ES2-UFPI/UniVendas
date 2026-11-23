@@ -36,8 +36,9 @@ function linhaPerfil(presenca: { ultimo_sinal_em: string } | null) {
     longitude: null,
     criado_em: '2026-10-20T12:00:00Z',
     contatos: [
-      { canal: 'whatsapp', valor: '5586999990000' },
-      { canal: 'instagram', valor: 'ana.brownies' },
+      { canal: 'whatsapp', valor: '5586999990000', visivel: true },
+      { canal: 'telefone', valor: '5586988880000', visivel: false },
+      { canal: 'instagram', valor: 'ana.brownies', visivel: true },
     ],
     itens: [
       item('i1', 'Café', true),
@@ -72,14 +73,20 @@ describe('SupabaseVendedorRepository.buscarPerfil (US10)', () => {
 
     expect(client.from).toHaveBeenCalledWith('vendedores')
     expect(select).toHaveBeenCalledWith(
-      expect.stringContaining('contatos(canal, valor), itens(*), presenca(ultimo_sinal_em)'),
+      expect.stringContaining(
+        'contatos(canal, valor, visivel), itens(*), presenca(ultimo_sinal_em)',
+      ),
     )
     expect(eq).toHaveBeenCalledWith('id', 'v1')
     expect(perfil).toBeInstanceOf(PerfilVendedor)
     expect(perfil?.vendedor).toBeInstanceOf(VendedorAmbulante)
     expect(perfil?.vendedor).toMatchObject({ id: 'v1', nomeExibicao: 'Brownies da Ana' })
     // Canal que o app ainda não conhece (Instagram, incremento 2) fica de fora.
-    expect(perfil?.contatos).toEqual([new Contato('whatsapp', '5586999990000')])
+    // O oculto só chega quando quem pede é o dono (RLS, RN24); aqui ele vem marcado como oculto.
+    expect(perfil?.contatos).toEqual([
+      new Contato('whatsapp', '5586999990000'),
+      new Contato('telefone', '5586988880000', false),
+    ])
   })
 
   it('ordena os itens: disponíveis primeiro, esgotados depois, em ordem alfabética (RN09)', async () => {

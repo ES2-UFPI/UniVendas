@@ -33,6 +33,15 @@ describe('VendedorFactory.criar', () => {
 })
 
 describe('VendedorFactory.doFormulario', () => {
+  it('guarda o id do vendedor quando é uma edição (US14)', () => {
+    const { vendedor } = VendedorFactory.doFormulario(
+      'u1',
+      { nomeExibicao: 'Ana', descricao: '', whatsapp: '(86) 99999-8888', telefone: '' },
+      'v1',
+    )
+    expect(vendedor.id).toBe('v1')
+  })
+
   it('monta o ambulante e os contatos no formato 55 + DDD', () => {
     const { vendedor, contatos } = VendedorFactory.doFormulario('u1', {
       nomeExibicao: '  Brownies da Ana ',
@@ -45,8 +54,8 @@ describe('VendedorFactory.doFormulario', () => {
     expect(vendedor.nomeExibicao).toBe('Brownies da Ana')
     expect(vendedor.descricao).toBe('Brownie e café')
     expect(contatos).toEqual([
-      { canal: 'whatsapp', valor: '5586999998888' },
-      { canal: 'telefone', valor: '558632151234' },
+      { canal: 'whatsapp', valor: '5586999998888', visivel: true },
+      { canal: 'telefone', valor: '558632151234', visivel: true },
     ])
   })
 

@@ -12,8 +12,11 @@ import type { VendedorRepository } from '../domain/VendedorRepository'
 
 const BUCKET_FOTOS = 'fotos'
 
-/** O vendedor, os contatos, os itens e a presença, numa consulta só. */
-const COLUNAS_PERFIL = '*, contatos(canal, valor), itens(*), presenca(ultimo_sinal_em)'
+/**
+ * O vendedor, os contatos, os itens e a presença, numa consulta só. Os contatos ocultos nem chegam
+ * aqui para os outros usuários: o RLS só os entrega ao dono (RN24).
+ */
+const COLUNAS_PERFIL = '*, contatos(canal, valor, visivel), itens(*), presenca(ultimo_sinal_em)'
 
 const CANAIS: readonly string[] = ['whatsapp', 'telefone'] satisfies CanalTipo[]
 
@@ -73,7 +76,7 @@ export class SupabaseVendedorRepository implements VendedorRepository {
       VendedorFactory.criar(dadosVendedor),
       contatos
         .filter((c) => CANAIS.includes(c.canal))
-        .map((c) => new Contato(c.canal as CanalTipo, c.valor)),
+        .map((c) => new Contato(c.canal as CanalTipo, c.valor, c.visivel)),
       itens.map(paraItem),
       ativoAgora,
     )
@@ -169,7 +172,7 @@ export class SupabaseVendedorRepository implements VendedorRepository {
   }
 
   /**
-   * Deixa os contatos do vendedor iguais à lista. O banco só deixa mudar o `valor` de um contato
+   * Deixa os contatos do vendedor iguais à lista. O banco só deixa mudar o `valor` e o `visivel` de um contato
    * (trocar o canal é apagar e criar), então cada canal é atualizado ou, se não existe, criado.
    * Os canais que saíram da lista são apagados por último, para nunca ficar sem contato (RN06).
    */
@@ -177,16 +180,19 @@ export class SupabaseVendedorRepository implements VendedorRepository {
     for (const contato of contatos) {
       const { data: atualizados, error } = await this.client
         .from('contatos')
-        .update({ valor: contato.valor })
+        .update({ valor: contato.valor, visivel: contato.visivel })
         .eq('vendedor_id', vendedorId)
         .eq('canal', contato.canal)
         .select('id')
       if (error) throw paraFalha(error)
 
       if (atualizados.length === 0) {
-        const { error: erroCriar } = await this.client
-          .from('contatos')
-          .insert({ vendedor_id: vendedorId, canal: contato.canal, valor: contato.valor })
+        const { error: erroCriar } = await this.client.from('contatos').insert({
+          vendedor_id: vendedorId,
+          canal: contato.canal,
+          valor: contato.valor,
+          visivel: contato.visivel,
+        })
         if (erroCriar) throw paraFalha(erroCriar)
       }
     }

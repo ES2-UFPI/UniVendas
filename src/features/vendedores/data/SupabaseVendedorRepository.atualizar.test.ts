@@ -180,7 +180,9 @@ describe('SupabaseVendedorRepository.atualizarPerfil: contatos', () => {
 
     await new SupabaseVendedorRepository(falso.client).atualizarPerfil(vendedor, [whatsapp])
 
-    expect(falso.args('contatos.update', 'update')).toEqual([{ valor: '5586999998888' }])
+    expect(falso.args('contatos.update', 'update')).toEqual([
+      { valor: '5586999998888', visivel: true },
+    ])
     expect(falso.args('contatos.update', 'eq', 0)).toEqual(['vendedor_id', 'v1'])
     expect(falso.args('contatos.update', 'eq', 1)).toEqual(['canal', 'whatsapp'])
     expect(falso.vezes('contatos.insert', 'insert')).toBe(0)
@@ -192,7 +194,18 @@ describe('SupabaseVendedorRepository.atualizarPerfil: contatos', () => {
     await new SupabaseVendedorRepository(falso.client).atualizarPerfil(vendedor, [telefone])
 
     expect(falso.args('contatos.insert', 'insert')).toEqual([
-      { vendedor_id: 'v1', canal: 'telefone', valor: '5586988887777' },
+      { vendedor_id: 'v1', canal: 'telefone', valor: '5586988887777', visivel: true },
+    ])
+  })
+
+  it('grava o número oculto como oculto (US19, RN24)', async () => {
+    const falso = clienteFalso()
+    const oculto = new Contato('whatsapp', '5586999998888', false)
+
+    await new SupabaseVendedorRepository(falso.client).atualizarPerfil(vendedor, [oculto])
+
+    expect(falso.args('contatos.update', 'update')).toEqual([
+      { valor: '5586999998888', visivel: false },
     ])
   })
 

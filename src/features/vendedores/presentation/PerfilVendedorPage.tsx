@@ -1,3 +1,5 @@
+import type { ChatRepository } from '../../chat/domain/ChatRepository'
+import { BotaoChat } from '../../chat/presentation/BotaoChat'
 import { ItemDoPerfil } from '../../itens/presentation/ItemDoPerfil'
 import type { VendedorRepository } from '../domain/VendedorRepository'
 import { usePerfilVendedorViewModel } from './usePerfilVendedorViewModel'
@@ -5,15 +7,24 @@ import { usePerfilVendedorViewModel } from './usePerfilVendedorViewModel'
 interface PerfilVendedorPageProps {
   /** Id do vendedor, vindo da rota `/vendedor/:id`. */
   id: string
+  /** Perfil de quem está logado: no próprio perfil não aparece o botão "Chat" (RN22). */
+  meuPerfilId?: string | null
   /** Só para os testes: repositório falso. */
   repositorio?: VendedorRepository
+  /** Só para os testes: repositório do chat falso. */
+  chatRepositorio?: ChatRepository
 }
 
 /**
  * Tela do perfil do vendedor (US10): foto, nome, descrição, contatos e itens.
  * Se ele não está no campus agora, mostra "fora do campus agora" (RN19).
  */
-export function PerfilVendedorPage({ id, repositorio }: PerfilVendedorPageProps) {
+export function PerfilVendedorPage({
+  id,
+  meuPerfilId = null,
+  repositorio,
+  chatRepositorio,
+}: PerfilVendedorPageProps) {
   const vm = usePerfilVendedorViewModel({ id, repositorio })
 
   if (vm.carregando) {
@@ -67,8 +78,12 @@ export function PerfilVendedorPage({ id, repositorio }: PerfilVendedorPageProps)
 
       {vendedor.descricao && <p className="text-gray-700">{vendedor.descricao}</p>}
 
-      {vm.botoesContato.length > 0 && (
+      {(vm.botoesContato.length > 0 || vendedor.perfilId !== meuPerfilId) && (
         <div className="flex gap-2">
+          {/* "Chat" abre a conversa dentro do app (US18); não aparece no próprio perfil (RN22). */}
+          {vendedor.perfilId !== meuPerfilId && (
+            <BotaoChat vendedorId={vendedor.id} repositorio={chatRepositorio} />
+          )}
           {vm.botoesContato.map((botao) => (
             <a
               key={botao.canal}

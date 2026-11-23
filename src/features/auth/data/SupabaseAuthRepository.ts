@@ -20,6 +20,11 @@ const MENSAGENS: Record<string, string> = {
   session_not_found: 'O link expirou. Peça um novo.',
 }
 
+const BUCKET_FOTOS = 'fotos'
+const MENSAGEM_EXCLUIR = 'Não foi possível excluir a conta. Tente de novo.'
+/** Quantas fotos o Storage devolve por vez ao listar a pasta da conta. */
+const POR_PAGINA = 1000
+
 function paraFalha(erro: AuthError, mensagemPadrao: string): Falha {
   // Sem sessão (link de recuperação vencido ou nunca aberto), o Supabase não manda `code`, só o nome do erro.
   const codigo =
@@ -68,6 +73,38 @@ export class SupabaseAuthRepository implements AuthRepository {
   async sair(): Promise<void> {
     const { error } = await this.client.auth.signOut()
     if (error) throw paraFalha(error, 'Não foi possível sair. Tente de novo.')
+  }
+
+  async excluirConta(): Promise<void> {
+    const { data: sessao } = await this.client.auth.getSession()
+    const perfilId = sessao.session?.user.id
+    if (!perfilId) throw new Falha('Entre na sua conta para excluí-la.', 'sem_sessao')
+
+    // As fotos saem antes: o servidor não apaga arquivos do Storage, e depois que a conta some
+    // a sessão deixa de valer para o Storage. Sem este passo, as fotos continuariam públicas.
+    await this.apagarFotos(perfilId)
+
+    const { error } = await this.client.rpc('excluir_conta')
+    if (error) throw new Falha(MENSAGEM_EXCLUIR, error.code ?? 'desconhecido')
+
+    // A conta não existe mais: limpa a sessão só neste aparelho, sem chamar o servidor.
+    await this.client.auth.signOut({ scope: 'local' })
+  }
+
+  /** Apaga todas as fotos da pasta da conta (fotos/<id>/...), de página em página. */
+  private async apagarFotos(perfilId: string): Promise<void> {
+    const pasta = this.client.storage.from(BUCKET_FOTOS)
+    for (;;) {
+      const { data: arquivos, error } = await pasta.list(perfilId, { limit: POR_PAGINA })
+      if (error) throw new Falha(MENSAGEM_EXCLUIR, 'fotos_nao_listadas')
+      if (arquivos.length === 0) return
+
+      const { error: erroApagar } = await pasta.remove(
+        arquivos.map((arquivo) => `${perfilId}/${arquivo.name}`),
+      )
+      if (erroApagar) throw new Falha(MENSAGEM_EXCLUIR, 'fotos_nao_apagadas')
+      if (arquivos.length < POR_PAGINA) return
+    }
   }
 
   async enviarLinkDeRecuperacao(email: string): Promise<void> {

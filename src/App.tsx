@@ -17,6 +17,9 @@ import { BuscaPage } from './features/busca/presentation/BuscaPage'
 import { EsqueciSenhaPage } from './features/auth/presentation/EsqueciSenhaPage'
 import { LoginPage } from './features/auth/presentation/LoginPage'
 import { NovaSenhaPage } from './features/auth/presentation/NovaSenhaPage'
+import type { ChatRepository } from './features/chat/domain/ChatRepository'
+import { ConversaPage } from './features/chat/presentation/ConversaPage'
+import { ConversasPage } from './features/chat/presentation/ConversasPage'
 import { MeusItensPage } from './features/itens/presentation/MeusItensPage'
 import { TelaVisitante } from './features/auth/presentation/TelaVisitante'
 import { VisaoDoCampus } from './features/mapa/presentation/VisaoDoCampus'
@@ -24,6 +27,7 @@ import { useMapaViewModel } from './features/mapa/presentation/useMapaViewModel'
 import type { PresencaRepository } from './features/presenca/domain/PresencaRepository'
 import { PainelVendedorPage } from './features/presenca/presentation/PainelVendedorPage'
 import type { VendedorRepository } from './features/vendedores/domain/VendedorRepository'
+import { MeuPerfilPage } from './features/vendedores/presentation/MeuPerfilPage'
 import { PerfilVendedorPage } from './features/vendedores/presentation/PerfilVendedorPage'
 import { QueroVenderPage } from './features/vendedores/presentation/QueroVenderPage'
 
@@ -161,10 +165,38 @@ function QueroVender() {
   return <QueroVenderPage perfilId={usuario?.id ?? null} />
 }
 
+/** "Meu perfil" (US14): o vendedor edita o próprio perfil. */
+function MeuPerfil({ repositorio }: { repositorio?: VendedorRepository }) {
+  const navegar = useNavigate()
+  const usuario = useSessaoStore((s) => s.usuario)
+  return (
+    <MeuPerfilPage
+      perfilId={usuario?.id ?? null}
+      repositorio={repositorio}
+      // Conta excluída: a sessão já foi limpa, então volta para o login.
+      aoExcluirConta={() => navegar(ROTAS.login, { replace: true })}
+    />
+  )
+}
+
 /** Perfil do vendedor (US10): o id vem do endereço `/vendedor/:id`. */
 function PerfilVendedor({ repositorio }: { repositorio?: VendedorRepository }) {
   const { id = '' } = useParams()
-  return <PerfilVendedorPage id={id} repositorio={repositorio} />
+  const usuario = useSessaoStore((s) => s.usuario)
+  return <PerfilVendedorPage id={id} meuPerfilId={usuario?.id ?? null} repositorio={repositorio} />
+}
+
+/** Tela "Conversas" (US18): as conversas de quem está logado. */
+function Conversas({ repositorio }: { repositorio?: ChatRepository }) {
+  const usuario = useSessaoStore((s) => s.usuario)
+  return <ConversasPage perfilId={usuario?.id ?? null} repositorio={repositorio} />
+}
+
+/** Tela da conversa (US18): o id vem do endereço `/conversa/:id`. */
+function Conversa({ repositorio }: { repositorio?: ChatRepository }) {
+  const { id = '' } = useParams()
+  const usuario = useSessaoStore((s) => s.usuario)
+  return <ConversaPage conversaId={id} perfilId={usuario?.id ?? null} repositorio={repositorio} />
 }
 
 function MeusItens() {
@@ -174,8 +206,10 @@ function MeusItens() {
 
 /** O mapa com os vendedores ativos, que aparecem e somem em tempo real (US06). */
 function Mapa({ presencaRepositorio }: { presencaRepositorio?: PresencaRepository }) {
+  const usuario = useSessaoStore((s) => s.usuario)
   const { marcadores, vendedores, carregando, erro } = useMapaViewModel({
     repositorio: presencaRepositorio,
+    perfilId: usuario?.id ?? null,
   })
   return (
     <>
@@ -194,10 +228,16 @@ interface AppRotasProps {
   presencaRepositorio?: PresencaRepository
   /** Só para os testes: repositório de vendedores falso (sem rede). */
   vendedorRepositorio?: VendedorRepository
+  /** Só para os testes: repositório do chat falso (sem rede). */
+  chatRepositorio?: ChatRepository
 }
 
 /** As rotas do app, sem o roteador (os testes usam um `MemoryRouter` em volta). */
-export function AppRotas({ presencaRepositorio, vendedorRepositorio }: AppRotasProps = {}) {
+export function AppRotas({
+  presencaRepositorio,
+  vendedorRepositorio,
+  chatRepositorio,
+}: AppRotasProps = {}) {
   return (
     <Routes>
       <Route element={<RotaSoVisitante />}>
@@ -214,12 +254,15 @@ export function AppRotas({ presencaRepositorio, vendedorRepositorio }: AppRotasP
             path={ROTAS.painel}
             element={<PainelVendedorPage repositorio={presencaRepositorio} />}
           />
+          <Route path={ROTAS.meuPerfil} element={<MeuPerfil repositorio={vendedorRepositorio} />} />
           <Route
             path={ROTAS.perfilVendedor}
             element={<PerfilVendedor repositorio={vendedorRepositorio} />}
           />
           <Route path={ROTAS.meusItens} element={<MeusItens />} />
           <Route path={ROTAS.busca} element={<BuscaPage />} />
+          <Route path={ROTAS.conversas} element={<Conversas repositorio={chatRepositorio} />} />
+          <Route path={ROTAS.conversa} element={<Conversa repositorio={chatRepositorio} />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to={ROTAS.mapa} replace />} />

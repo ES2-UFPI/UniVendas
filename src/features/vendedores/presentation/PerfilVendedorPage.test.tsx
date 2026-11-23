@@ -1,6 +1,10 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render as renderizar, screen } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Falha } from '../../../core/falha'
+import type { ChatRepository } from '../../chat/domain/ChatRepository'
+import { Conversa } from '../../chat/domain/Conversa'
 import { Item } from '../../itens/domain/Item'
 import { Contato } from '../domain/Contato'
 import { PerfilVendedor } from '../domain/PerfilVendedor'
@@ -9,6 +13,9 @@ import type { VendedorRepository } from '../domain/VendedorRepository'
 import { PerfilVendedorPage } from './PerfilVendedorPage'
 
 afterEach(cleanup)
+
+// O botão "Chat" navega para a conversa, então a tela precisa de um roteador em volta.
+const render = (tela: ReactElement) => renderizar(<MemoryRouter>{tela}</MemoryRouter>)
 
 const ana = new VendedorAmbulante('v1', 'u1', 'Brownies da Ana', 'Brownie caseiro')
 
@@ -96,5 +103,84 @@ describe('PerfilVendedorPage (US10)', () => {
     const falha = new Falha('Não foi possível carregar o perfil. Tente de novo.', '500')
     render(<PerfilVendedorPage id="v1" repositorio={repositorio(() => Promise.reject(falha))} />)
     expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível carregar o perfil')
+  })
+
+  it('mostra o botão "Chat", que abre a conversa com o vendedor (US18)', async () => {
+    const chatRepositorio = {
+      abrirConversa: vi.fn((vendedorId: string) =>
+        Promise.resolve(new Conversa('c7', 'u9', 'Bia', vendedorId, 'u1', 'Ana', new Date())),
+      ),
+    } as unknown as ChatRepository
+    renderizar(
+      <MemoryRouter initialEntries={['/vendedor/v1']}>
+        <Routes>
+          <Route
+            path="/vendedor/:id"
+            element={
+              <PerfilVendedorPage
+                id="v1"
+                meuPerfilId="u9"
+                repositorio={repositorio(() => Promise.resolve(perfil(true)))}
+                chatRepositorio={chatRepositorio}
+              />
+            }
+          />
+          <Route path="/conversa/:id" element={<p>Tela da conversa</p>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Chat' }))
+
+    expect(await screen.findByText('Tela da conversa')).toBeInTheDocument()
+    expect(chatRepositorio.abrirConversa).toHaveBeenCalledWith('v1')
+  })
+
+  it('não mostra "Chat" no próprio perfil do vendedor (RN22)', async () => {
+    render(
+      <PerfilVendedorPage
+        id="v1"
+        meuPerfilId="u1"
+        repositorio={repositorio(() => Promise.resolve(perfil(true)))}
+      />,
+    )
+
+    expect(await screen.findByRole('heading', { name: 'Brownies da Ana' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Chat' })).not.toBeInTheDocument()
+  })
+
+  it('não mostra o número oculto; com todos ocultos, fica só o "Chat" (US19)', async () => {
+    const ocultos = [
+      new Contato('whatsapp', '5586999990000', false),
+      new Contato('telefone', '5586988880000', false),
+    ]
+    render(
+      <PerfilVendedorPage
+        id="v1"
+        meuPerfilId="u9"
+        repositorio={repositorio(() => Promise.resolve(perfil(true, ocultos)))}
+      />,
+    )
+
+    expect(await screen.findByRole('button', { name: 'Chat' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'WhatsApp' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Ligar' })).not.toBeInTheDocument()
+  })
+
+  it('no próprio perfil, o dono vê só os números visíveis, como os outros veem (US19)', async () => {
+    const contatos = [
+      new Contato('whatsapp', '5586999990000', false),
+      new Contato('telefone', '5586988880000'),
+    ]
+    render(
+      <PerfilVendedorPage
+        id="v1"
+        meuPerfilId="u1"
+        repositorio={repositorio(() => Promise.resolve(perfil(true, contatos)))}
+      />,
+    )
+
+    expect(await screen.findByRole('link', { name: 'Ligar' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'WhatsApp' })).not.toBeInTheDocument()
   })
 })

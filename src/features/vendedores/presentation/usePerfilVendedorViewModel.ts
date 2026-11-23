@@ -70,11 +70,14 @@ export function usePerfilVendedorViewModel({ id, repositorio }: Opcoes) {
 
   const botoesContato = useMemo<BotaoContatoPerfil[]>(
     () =>
-      (perfil?.contatos ?? []).map((contato) => ({
-        canal: contato.canal,
-        rotulo: contatoService.rotulo(contato),
-        link: contatoService.gerarLink(contato),
-      })),
+      // Só os números visíveis viram botão; sem nenhum, a tela fica só com o "Chat" (US19).
+      (perfil?.contatos ?? [])
+        .filter((contato) => contato.visivel)
+        .map((contato) => ({
+          canal: contato.canal,
+          rotulo: contatoService.rotulo(contato),
+          link: contatoService.gerarLink(contato),
+        })),
     [perfil],
   )
 
