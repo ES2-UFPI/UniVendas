@@ -18,6 +18,7 @@ afterEach(() => {
 })
 
 const ana = new Usuario('u1', 'Ana', 'ana@ufpi.edu.br')
+const anaVendedora = new Usuario('u1', 'Ana', 'ana@ufpi.edu.br', false, 'v1')
 
 // Repositório de presença falso: o mapa não pode abrir canal no Supabase de verdade durante os testes.
 const presencaRepositorio = {
@@ -154,7 +155,7 @@ describe('App', () => {
   })
 
   it('o menu leva ao painel do vendedor, com o botão "Estou no campus" (US04)', () => {
-    abrir('/', ana)
+    abrir('/', anaVendedora)
     expect(screen.getByRole('link', { name: 'Painel' })).toHaveAttribute('href', '/painel')
     cleanup()
 
@@ -191,7 +192,7 @@ describe('App', () => {
   })
 
   it('o menu leva à tela "Meu perfil" (US14)', () => {
-    abrir('/', ana)
+    abrir('/', anaVendedora)
     expect(screen.getByRole('link', { name: 'Meu perfil' })).toHaveAttribute('href', '/meu-perfil')
     cleanup()
 
@@ -205,7 +206,7 @@ describe('App', () => {
   })
 
   it('o menu leva à tela "Meus itens" (US08)', () => {
-    abrir('/', ana)
+    abrir('/', anaVendedora)
     expect(screen.getByRole('link', { name: 'Meus itens' })).toHaveAttribute('href', '/meus-itens')
     cleanup()
 
