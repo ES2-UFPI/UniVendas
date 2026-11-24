@@ -143,10 +143,10 @@ export function FormularioPerfilVendedor({
         className="flex min-w-0 flex-col gap-4"
         aria-describedby={erros.contato ? 'contato-erro' : 'contato-ajuda'}
       >
-        <legend className="font-titulo text-xl tracking-[-0.035em] text-tinta">
+        <legend className="mb-1 font-titulo text-xl tracking-[-0.035em] text-tinta">
           Como podem falar com você?
         </legend>
-        <p id="contato-ajuda" className="-mt-2 text-sm text-tinta-suave">
+        <p id="contato-ajuda" className="text-sm text-tinta-suave">
           Informe pelo menos um contato.
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
