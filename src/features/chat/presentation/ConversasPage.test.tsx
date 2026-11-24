@@ -8,7 +8,7 @@ import { ConversasPage } from './ConversasPage'
 
 afterEach(cleanup)
 
-function abrir(conversas: Conversa[]) {
+function abrir(conversas: Conversa[], conversaAbertaId?: string) {
   const repositorio = {
     abrirConversa: vi.fn(),
     buscarConversa: vi.fn(),
@@ -19,7 +19,9 @@ function abrir(conversas: Conversa[]) {
   } as ChatRepository
   render(
     <MemoryRouter>
-      <ConversasPage perfilId="ana" repositorio={repositorio} />
+      <ConversasPage perfilId="ana" repositorio={repositorio} conversaAbertaId={conversaAbertaId}>
+        {conversaAbertaId && <p>conversa aberta</p>}
+      </ConversasPage>
     </MemoryRouter>,
   )
 }
@@ -32,6 +34,32 @@ describe('ConversasPage (US18)', () => {
     const link = await screen.findByRole('link', { name: /Café do Leo/ })
     expect(link).toHaveAttribute('href', '/conversa/c1')
     expect(link).toHaveTextContent('Tem sim!')
+  })
+
+  it('tem o título da tela e, sem conversa aberta, convida a escolher uma (US21)', async () => {
+    abrir([])
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Conversas' })).toBeInTheDocument()
+    expect(screen.getByText('Fale com os vendedores e combine onde encontrar.')).toBeInTheDocument()
+    expect(screen.getByText('Escolha uma conversa para ler e responder.')).toBeInTheDocument()
+  })
+
+  it('com uma conversa aberta, mostra ela ao lado e marca a linha dela na lista', async () => {
+    abrir(
+      [
+        new Conversa('c1', 'ana', 'Ana', 'v1', 'leo', 'Café do Leo', new Date()),
+        new Conversa('c2', 'ana', 'Ana', 'v2', 'bia', 'Doces da Bia', new Date()),
+      ],
+      'c2',
+    )
+
+    expect(await screen.findByRole('link', { name: /Doces da Bia/ })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect(screen.getByRole('link', { name: /Café do Leo/ })).not.toHaveAttribute('aria-current')
+    expect(screen.getByText('conversa aberta')).toBeInTheDocument()
+    expect(screen.queryByText('Escolha uma conversa para ler e responder.')).not.toBeInTheDocument()
   })
 
   it('avisa quando ainda não há conversas', async () => {

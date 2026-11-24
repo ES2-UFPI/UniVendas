@@ -16,6 +16,7 @@ const linha = {
   foto_url: null as string | null,
   disponivel: true,
   no_campus_agora: false,
+  referencia: null as string | null,
 }
 
 // Cliente falso: só tem o `rpc`, que é o que o repositório usa. Nenhum teste acessa o Supabase de verdade.
@@ -57,6 +58,18 @@ describe('SupabaseBuscaRepository.buscar', () => {
     expect(primeiro.noCampusAgora).toBe(false)
     expect(segundo.item.disponivel).toBe(false)
     expect(segundo.noCampusAgora).toBe(true)
+    expect(primeiro.referencia).toBeNull()
+  })
+
+  it('traz a referência de onde achar o vendedor (RN18)', async () => {
+    const { repo } = clienteFalso({
+      data: [{ ...linha, no_campus_agora: true, referencia: 'Perto da Biblioteca Central' }],
+      error: null,
+    })
+
+    const [resultado] = await repo.buscar({ texto: 'brownie' })
+
+    expect(resultado.referencia).toBe('Perto da Biblioteca Central')
   })
 
   it('mantém a ordem do servidor: disponíveis primeiro, esgotados depois (RN09)', async () => {
@@ -115,5 +128,32 @@ describe('SupabaseBuscaRepository.buscar', () => {
 
     expect(erro).toBeInstanceOf(Falha)
     expect(erro.mensagem).toBe('Não foi possível buscar agora. Tente de novo.')
+  })
+})
+
+describe('SupabaseBuscaRepository.detalhar', () => {
+  it('lê o item pelo id, no mesmo formato da busca', async () => {
+    const { repo, rpc } = clienteFalso({ data: [linha], error: null })
+
+    const resultado = await repo.detalhar('i1')
+
+    expect(rpc).toHaveBeenCalledWith('buscar_itens', { item: 'i1' })
+    expect(resultado?.item.nome).toBe('Brownie de chocolate')
+    expect(resultado?.vendedorNome).toBe('Doces da Ana')
+  })
+
+  it('devolve null quando o item não existe mais', async () => {
+    const { repo } = clienteFalso({ data: [], error: null })
+
+    expect(await repo.detalhar('sumiu')).toBeNull()
+  })
+
+  it('lança Falha quando a leitura dá erro', async () => {
+    const { repo } = clienteFalso({ data: null, error: { code: '500' } })
+
+    const erro = await repo.detalhar('i1').catch((e) => e)
+
+    expect(erro).toBeInstanceOf(Falha)
+    expect(erro.mensagem).toBe('Não foi possível abrir o item agora. Tente de novo.')
   })
 })

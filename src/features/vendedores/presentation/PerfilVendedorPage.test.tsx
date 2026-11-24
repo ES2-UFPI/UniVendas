@@ -69,6 +69,29 @@ describe('PerfilVendedorPage (US10)', () => {
     expect(screen.getAllByText('Esgotado')).toHaveLength(1)
   })
 
+  it('tem "Voltar ao mapa", onde achar o vendedor e a vitrine com o selo dos itens (US21)', async () => {
+    const comReferencia = new PerfilVendedor(
+      ana,
+      [],
+      [new Item('i1', 'v1', 7, 'Brownie', 6.5)],
+      true,
+      'Perto da Biblioteca Central',
+    )
+    render(
+      <PerfilVendedorPage
+        id="v1"
+        repositorio={repositorio(() => Promise.resolve(comReferencia))}
+      />,
+    )
+
+    expect(await screen.findByText('Perto da Biblioteca Central')).toBeInTheDocument()
+    expect(screen.getByText('UFPI · Campus Ministro Petrônio Portella')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Voltar ao mapa' })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('heading', { name: 'O que você encontra por aqui' })).toBeVisible()
+    const vitrine = screen.getByRole('list', { name: 'Itens de Brownies da Ana' })
+    expect(vitrine).toHaveTextContent('Disponível agora')
+  })
+
   it('mostra "Fora do campus agora" quando o vendedor está desligado (RN19)', async () => {
     render(
       <PerfilVendedorPage
@@ -79,6 +102,8 @@ describe('PerfilVendedorPage (US10)', () => {
 
     expect(await screen.findByText('Fora do campus agora')).toBeInTheDocument()
     expect(screen.queryByText('No campus agora')).not.toBeInTheDocument()
+    expect(screen.getByText('Aparece no mapa quando estiver no campus')).toBeInTheDocument()
+    expect(screen.queryByText('Disponível agora')).not.toBeInTheDocument()
   })
 
   it('não mostra o botão do contato que o vendedor não cadastrou', async () => {

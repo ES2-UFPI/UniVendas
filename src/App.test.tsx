@@ -8,7 +8,9 @@ import type { PresencaRepository } from './features/presenca/domain/PresencaRepo
 import { PerfilVendedor } from './features/vendedores/domain/PerfilVendedor'
 import { VendedorAmbulante } from './features/vendedores/domain/Vendedor'
 import type { VendedorRepository } from './features/vendedores/domain/VendedorRepository'
-import { rotaConversa, rotaPerfilVendedor } from './core/routes'
+import { rotaConversa, rotaItem, rotaPerfilVendedor } from './core/routes'
+import type { BuscaRepository } from './features/busca/domain/BuscaRepository'
+import { Item } from './features/itens/domain/Item'
 import type { ChatRepository } from './features/chat/domain/ChatRepository'
 import { Conversa } from './features/chat/domain/Conversa'
 
@@ -57,6 +59,17 @@ const chatRepositorio = {
 // Árvore de categorias falsa: a busca não pode ler o Supabase de verdade.
 const categoriasRepositorio = { listarCategorias: vi.fn().mockResolvedValue([]) }
 
+// Busca falsa: o detalhe do item também não pode ler o Supabase de verdade.
+const buscaRepositorio = {
+  buscar: vi.fn().mockResolvedValue([]),
+  detalhar: vi.fn().mockResolvedValue({
+    item: new Item('i1', 'v1', 7, 'Brownie de chocolate', 6),
+    vendedorNome: 'Doces da Ana',
+    noCampusAgora: false,
+    referencia: null,
+  }),
+} as BuscaRepository
+
 /** Abre o app no endereço `url`, com a sessão já definida. */
 function abrir(url: string, usuario: Usuario | null) {
   useSessaoStore.setState({ usuario, carregando: false })
@@ -67,6 +80,7 @@ function abrir(url: string, usuario: Usuario | null) {
         vendedorRepositorio={vendedorRepositorio}
         chatRepositorio={chatRepositorio}
         categoriasRepositorio={categoriasRepositorio}
+        buscaRepositorio={buscaRepositorio}
       />
     </MemoryRouter>,
   )
@@ -230,7 +244,16 @@ describe('App', () => {
     cleanup()
 
     abrir('/busca', ana)
-    expect(screen.getByRole('heading', { name: 'Buscar' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Buscar no campus' })).toBeInTheDocument()
+    expect(screen.getByRole('search')).toBeInTheDocument()
+  })
+
+  it('abre o detalhe de um item pelo endereço, e "Voltar à busca" leva à busca (US21)', async () => {
+    abrir(rotaItem('i1'), ana)
+    expect(await screen.findByRole('heading', { name: 'Brownie de chocolate' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Voltar à busca' }))
+
     expect(screen.getByRole('search')).toBeInTheDocument()
   })
 

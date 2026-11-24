@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { rotaPerfilVendedor } from '../../../core/routes'
+import { Icone } from '../../../core/ui/Icone'
 import { tempoDesdeSinal } from '../domain/tempoDesdeSinal'
 
 /** Um vendedor que está no campus agora, como a lista mostra (US13). */
@@ -35,31 +36,37 @@ export function ListaNoCampus({ vendedores, carregando = false }: ListaNoCampusP
 
   if (carregando) {
     return (
-      <p role="status" className="p-4 text-gray-600">
+      <p role="status" className="py-4 text-tinta-suave">
         Carregando quem está no campus…
       </p>
     )
   }
 
   if (vendedores.length === 0) {
-    return <p className="p-4 text-gray-700">Ninguém está no campus agora.</p>
+    return <p className="py-4 text-tinta-suave">Ninguém está no campus agora.</p>
   }
 
   return (
-    <ul aria-label="Vendedores no campus agora" className="flex w-full max-w-md flex-col gap-2">
+    <ul
+      aria-label="Vendedores no campus agora"
+      className="grid w-full grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3"
+    >
       {vendedores.map((v) => (
         <li key={v.id}>
           <Link
             to={rotaPerfilVendedor(v.id)}
-            className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 p-3 hover:bg-gray-50"
+            className="flex h-full items-center gap-4 rounded-cartao border border-linha bg-white p-4 transition-colors hover:border-marca-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marca-600"
           >
-            <span className="min-w-0">
-              <span className="block break-words font-semibold text-gray-900">{v.nome}</span>
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-marca-50 text-marca-600">
+              <Icone nome="pino" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-bold break-words text-tinta">{v.nome}</span>
               {v.referencia && (
-                <span className="block break-words text-sm text-gray-600">{v.referencia}</span>
+                <span className="block text-sm break-words text-tinta-suave">{v.referencia}</span>
               )}
             </span>
-            <span className="shrink-0 text-xs text-gray-500">
+            <span className="shrink-0 text-xs text-tinta-suave">
               {tempoDesdeSinal(v.ultimoSinalEm, agora)}
             </span>
           </Link>

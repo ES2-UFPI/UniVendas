@@ -8,12 +8,16 @@ interface CartaoItemProps {
   fotoUrl: string | null
   /** Quem vende (ex.: "Doces da Ana"). */
   vendedor?: string
+  /** Onde achar (ex.: "Perto da Biblioteca"), embaixo do vendedor. */
+  local?: string
   /** O selo de cima (ex.: `<Selo>Disponível agora</Selo>`). */
   selo?: ReactNode
   /** Esgotado: nome riscado e foto apagada (RN09). */
   esgotado?: boolean
   /** `linha`: foto ao lado (listas). `coluna`: foto em cima (vitrine do perfil). */
   formato?: 'linha' | 'coluna'
+  /** Nível do título do item, para seguir os títulos da tela (padrão: h3). */
+  nivelTitulo?: 3 | 4
   className?: string
 }
 
@@ -23,12 +27,15 @@ export function CartaoItem({
   preco,
   fotoUrl,
   vendedor,
+  local,
   selo,
   esgotado = false,
   formato = 'linha',
+  nivelTitulo = 3,
   className = '',
 }: CartaoItemProps) {
   const coluna = formato === 'coluna'
+  const Titulo = nivelTitulo === 4 ? 'h4' : 'h3'
   return (
     <article
       className={`flex ${coluna ? 'flex-col gap-3' : 'items-center gap-[18px]'} ${className}`}
@@ -40,12 +47,13 @@ export function CartaoItem({
       />
       <div className="flex min-w-0 flex-col gap-1.5">
         {selo}
-        <h3
+        <Titulo
           className={`text-lg leading-[25px] font-bold break-words ${esgotado ? 'text-tinta-suave line-through' : 'text-tinta'}`}
         >
           {nome}
-        </h3>
-        {vendedor && <p className="text-sm text-tinta-suave">{vendedor}</p>}
+        </Titulo>
+        {vendedor && <p className="truncate text-sm text-tinta-suave">{vendedor}</p>}
+        {local && <p className="truncate text-sm text-tinta-suave">{local}</p>}
         <p className="text-lg font-bold text-marca-900">{formatarPreco(preco)}</p>
       </div>
     </article>

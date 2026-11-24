@@ -24,7 +24,7 @@ function item(id: string, nome: string, disponivel: boolean) {
   }
 }
 
-function linhaPerfil(presenca: { ultimo_sinal_em: string } | null) {
+function linhaPerfil(presenca: { ultimo_sinal_em: string; referencia?: string | null } | null) {
   return {
     id: 'v1',
     perfil_id: 'u1',
@@ -74,7 +74,7 @@ describe('SupabaseVendedorRepository.buscarPerfil (US10)', () => {
     expect(client.from).toHaveBeenCalledWith('vendedores')
     expect(select).toHaveBeenCalledWith(
       expect.stringContaining(
-        'contatos(canal, valor, visivel), itens(*), presenca(ultimo_sinal_em)',
+        'contatos(canal, valor, visivel), itens(*), presenca(ultimo_sinal_em, referencia)',
       ),
     )
     expect(eq).toHaveBeenCalledWith('id', 'v1')
@@ -114,6 +114,20 @@ describe('SupabaseVendedorRepository.buscarPerfil (US10)', () => {
 
     expect((await semPresenca.repo.buscarPerfil('v1'))?.ativoAgora).toBe(false)
     expect((await sinalVelho.repo.buscarPerfil('v1'))?.ativoAgora).toBe(false)
+  })
+
+  it('traz a referência de onde achar o vendedor só enquanto ele está no campus (RN18)', async () => {
+    const ativo = clienteFalso({
+      data: linhaPerfil({ ultimo_sinal_em: haMinutos(5), referencia: 'Perto da Biblioteca' }),
+      error: null,
+    })
+    const sinalVelho = clienteFalso({
+      data: linhaPerfil({ ultimo_sinal_em: haMinutos(30), referencia: 'Perto da Biblioteca' }),
+      error: null,
+    })
+
+    expect((await ativo.repo.buscarPerfil('v1'))?.referencia).toBe('Perto da Biblioteca')
+    expect((await sinalVelho.repo.buscarPerfil('v1'))?.referencia).toBeNull()
   })
 
   it('devolve null quando o vendedor não existe', async () => {

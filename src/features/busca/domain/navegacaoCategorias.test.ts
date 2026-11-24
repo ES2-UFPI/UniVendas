@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Categoria } from '../../itens/domain/Categoria'
-import { caminhoAte, filhasDe } from './navegacaoCategorias'
+import { filhasDe } from './navegacaoCategorias'
 
 // Pedaço da árvore dos dados iniciais, fora de ordem de propósito.
 const categorias: Categoria[] = [
@@ -26,24 +26,5 @@ describe('filhasDe', () => {
 
   it('a folha não tem filhas', () => {
     expect(filhasDe(categorias, 7)).toEqual([])
-  })
-})
-
-describe('caminhoAte', () => {
-  it('vai da raiz até a categoria: Alimentação › Doces › Brownie', () => {
-    expect(caminhoAte(categorias, 7).map((c) => c.nome)).toEqual([
-      'Alimentação',
-      'Doces',
-      'Brownie',
-    ])
-  })
-
-  it('a categoria da raiz é o próprio caminho', () => {
-    expect(caminhoAte(categorias, 1).map((c) => c.nome)).toEqual(['Alimentação'])
-  })
-
-  it('sem categoria, ou com uma que não existe, o caminho é vazio', () => {
-    expect(caminhoAte(categorias, null)).toEqual([])
-    expect(caminhoAte(categorias, 99)).toEqual([])
   })
 })

@@ -11,6 +11,7 @@ export const ROTAS = {
   perfilVendedor: '/vendedor/:id',
   meusItens: '/meus-itens',
   busca: '/busca',
+  item: '/item/:id',
   conversas: '/conversas',
   conversa: '/conversa/:id',
 } as const
@@ -23,4 +24,9 @@ export function rotaPerfilVendedor(id: string): string {
 /** Endereço da tela de uma conversa do chat, ex.: `/conversa/123` (US18). */
 export function rotaConversa(id: string): string {
   return ROTAS.conversa.replace(':id', encodeURIComponent(id))
+}
+
+/** Endereço do detalhe de um item, aberto pela busca, ex.: `/item/123` (US21). */
+export function rotaItem(id: string): string {
+  return ROTAS.item.replace(':id', encodeURIComponent(id))
 }

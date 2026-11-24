@@ -1,204 +1,234 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Falha } from '../../../core/falha'
 import type { Categoria } from '../../itens/domain/Categoria'
 import { Item } from '../../itens/domain/Item'
 import type { BuscaRepository, ResultadoBusca } from '../domain/BuscaRepository'
-import { useBuscaViewModel } from './useBuscaViewModel'
 
-function resultado(id: string, disponivel = true): ResultadoBusca {
-  return {
-    item: new Item(id, 'v1', 7, `Brownie ${id}`, 5, '', null, disponivel),
-    vendedorNome: 'Doces da Ana',
-    noCampusAgora: false,
-  }
-}
+type Buscar = BuscaRepository['buscar']
+import { limparMemoriaDaBusca, useMemoriaDaBusca } from './memoriaDaBusca'
+import { useBuscaViewModel } from './useBuscaViewModel'
 
 const categorias: Categoria[] = [
   { id: 1, nome: 'Alimentação', categoriaPaiId: null, folha: false },
-  { id: 3, nome: 'Doces', categoriaPaiId: 1, folha: false },
-  { id: 4, nome: 'Bebidas', categoriaPaiId: 1, folha: false },
-  { id: 7, nome: 'Brownie', categoriaPaiId: 3, folha: true },
   { id: 2, nome: 'Outros produtos', categoriaPaiId: null, folha: false },
+  { id: 3, nome: 'Doces', categoriaPaiId: 1, folha: false },
+  { id: 7, nome: 'Brownie', categoriaPaiId: 3, folha: true },
+  { id: 9, nome: 'Café', categoriaPaiId: 1, folha: true },
+  { id: 20, nome: 'Artesanato', categoriaPaiId: 2, folha: true },
 ]
 
-// Fonte falsa da árvore: nenhum teste lê as categorias do Supabase de verdade.
-const categoriasRepositorio = { listarCategorias: vi.fn().mockResolvedValue(categorias) }
-
-function falso(buscar = vi.fn().mockResolvedValue([resultado('a')])) {
-  return { repositorio: { buscar } as BuscaRepository, categoriasRepositorio, buscar }
+function resultado(
+  id: string,
+  categoriaId: number,
+  nome: string,
+  disponivel = true,
+): ResultadoBusca {
+  return {
+    item: new Item(id, 'v1', categoriaId, nome, 5, '', `https://x/${id}.jpg`, disponivel),
+    vendedorNome: 'Doces da Ana',
+    noCampusAgora: true,
+    referencia: 'Perto da Biblioteca Central',
+  }
 }
 
-/** Abre o hook e espera a árvore de categorias carregar. */
-async function aberto(f = falso()) {
-  const hook = renderHook(() => useBuscaViewModel(f))
-  await waitFor(() => expect(hook.result.current.subcategorias).toHaveLength(2))
-  return { ...hook, ...f }
+const brownie = resultado('a', 7, 'Brownie de chocolate')
+const cafe = resultado('b', 9, 'Café coado')
+const esgotado = resultado('c', 7, 'Brownie 100% cacau', false)
+const chaveiro = resultado('d', 20, 'Chaveiro')
+
+/** Busca falsa: Alimentação (1) traz comida; Outros produtos (2), o chaveiro; com texto, só o brownie. */
+function buscaFalsa() {
+  return vi.fn(({ texto, categoriaId }: { texto: string; categoriaId?: number | null }) => {
+    if (texto) return Promise.resolve([brownie])
+    return Promise.resolve(categoriaId === 2 ? [chaveiro] : [brownie, cafe, esgotado])
+  })
 }
+
+function abrir(
+  buscar: Buscar = buscaFalsa(),
+  listarCategorias = vi.fn().mockResolvedValue(categorias),
+) {
+  // Criados fora do renderHook: um objeto novo a cada render faria o hook reler tudo sem parar.
+  const repositorio = { buscar, detalhar: vi.fn() } as unknown as BuscaRepository
+  const categoriasRepositorio = { listarCategorias }
+  const hook = renderHook(() => useBuscaViewModel({ repositorio, categoriasRepositorio }))
+  return { ...hook, buscar, listarCategorias }
+}
+
+async function aberto(buscar: Buscar = buscaFalsa()) {
+  const tudo = abrir(buscar)
+  await waitFor(() => expect(tudo.result.current.carregou).toBe(true))
+  return tudo
+}
+
+beforeEach(limparMemoriaDaBusca)
+afterEach(cleanup)
 
 describe('useBuscaViewModel', () => {
-  it('começa sem texto, sem resultados e sem ter buscado', async () => {
+  it('abre na primeira aba, com a oferta dela: disponíveis e esgotados separados (RN09)', async () => {
+    const { result, buscar } = await aberto()
+
+    expect(result.current.abas.map((a) => a.nome)).toEqual(['Alimentação', 'Outros produtos'])
+    expect(result.current.abaAtual?.nome).toBe('Alimentação')
+    expect(buscar).toHaveBeenCalledWith({ texto: '', categoriaId: 1 })
+    expect(result.current.disponiveis.map((r) => r.item.nome)).toEqual([
+      'Brownie de chocolate',
+      'Café coado',
+    ])
+    expect(result.current.esgotados.map((r) => r.item.nome)).toEqual(['Brownie 100% cacau'])
+  })
+
+  it('monta os atalhos com os tipos de produto da oferta', async () => {
     const { result } = await aberto()
-    expect(result.current.texto).toBe('')
-    expect(result.current.resultados).toEqual([])
-    expect(result.current.buscou).toBe(false)
+
+    expect(result.current.atalhos.map((a) => [a.categoria.nome, a.quantidade])).toEqual([
+      ['Brownie', 2],
+      ['Café', 1],
+    ])
   })
 
-  it('busca pelo texto digitado e guarda os resultados', async () => {
+  it('o atalho filtra a lista sem buscar de novo; escolher de novo tira o filtro', async () => {
     const { result, buscar } = await aberto()
-    act(() => result.current.alterarTexto('brownie'))
 
-    await act(() => result.current.buscar())
+    act(() => result.current.escolherAtalho(9))
 
-    expect(buscar).toHaveBeenCalledWith({ texto: 'brownie' })
-    expect(result.current.resultados).toHaveLength(1)
-    expect(result.current.buscou).toBe(true)
-    expect(result.current.buscando).toBe(false)
+    expect(result.current.atalhoAtual?.nome).toBe('Café')
+    expect(result.current.disponiveis.map((r) => r.item.nome)).toEqual(['Café coado'])
+    expect(result.current.esgotados).toEqual([])
+    expect(buscar).toHaveBeenCalledOnce()
+
+    act(() => result.current.escolherAtalho(9))
+    expect(result.current.atalhoAtual).toBeNull()
+    expect(result.current.disponiveis).toHaveLength(2)
   })
 
-  it('com menos de 2 letras avisa e não chama o repositório', async () => {
+  it('trocar de aba traz a oferta da outra aba e tira o atalho', async () => {
     const { result, buscar } = await aberto()
-    act(() => result.current.alterarTexto(' b '))
+    act(() => result.current.escolherAtalho(7))
 
+    await act(() => result.current.trocarAba(2))
+
+    expect(buscar).toHaveBeenLastCalledWith({ texto: '', categoriaId: 2 })
+    expect(result.current.abaAtual?.nome).toBe('Outros produtos')
+    expect(result.current.atalhoAtual).toBeNull()
+    expect(result.current.disponiveis.map((r) => r.item.nome)).toEqual(['Chaveiro'])
+  })
+
+  it('busca o texto dentro da aba', async () => {
+    const { result, buscar } = await aberto()
+
+    act(() => result.current.alterarTexto('BROWNIE'))
     await act(() => result.current.buscar())
 
-    expect(buscar).not.toHaveBeenCalled()
+    expect(buscar).toHaveBeenLastCalledWith({ texto: 'BROWNIE', categoriaId: 1 })
+    expect(result.current.buscado).toBe('BROWNIE')
+    expect(result.current.disponiveis.map((r) => r.item.nome)).toEqual(['Brownie de chocolate'])
+  })
+
+  it('o texto buscado continua valendo ao trocar de aba', async () => {
+    const { result, buscar } = await aberto()
+    act(() => result.current.alterarTexto('ana'))
+    await act(() => result.current.buscar())
+
+    await act(() => result.current.trocarAba(2))
+
+    expect(buscar).toHaveBeenLastCalledWith({ texto: 'ana', categoriaId: 2 })
+  })
+
+  it('pede pelo menos 2 letras e não busca com 1', async () => {
+    const { result, buscar } = await aberto()
+
+    act(() => result.current.alterarTexto('b'))
+    await act(() => result.current.buscar())
+
     expect(result.current.erro).toBe('Digite pelo menos 2 letras.')
-    expect(result.current.buscou).toBe(false)
+    expect(buscar).toHaveBeenCalledOnce()
   })
 
-  it('mostra a mensagem da Falha e limpa os resultados quando a busca falha', async () => {
-    const buscar = vi
-      .fn()
-      .mockResolvedValueOnce([resultado('a')])
-      .mockRejectedValueOnce(new Falha('Não foi possível buscar agora. Tente de novo.', 'rede'))
-    const { result } = renderHook(() =>
-      useBuscaViewModel({ repositorio: { buscar }, categoriasRepositorio }),
-    )
+  it('apagar o texto volta para a oferta da aba', async () => {
+    const { result, buscar } = await aberto()
     act(() => result.current.alterarTexto('brownie'))
     await act(() => result.current.buscar())
 
-    await act(() => result.current.buscar())
+    act(() => result.current.alterarTexto(''))
 
-    expect(result.current.erro).toBe('Não foi possível buscar agora. Tente de novo.')
-    expect(result.current.resultados).toEqual([])
+    await waitFor(() => expect(result.current.disponiveis).toHaveLength(2))
+    expect(result.current.buscado).toBeNull()
+    expect(buscar).toHaveBeenLastCalledWith({ texto: '', categoriaId: 1 })
   })
 
-  it('ignora a resposta de uma busca antiga que chega depois da nova', async () => {
-    let responderAntiga: (r: ResultadoBusca[]) => void = () => {}
-    const buscar = vi
-      .fn()
-      .mockImplementationOnce(() => new Promise((resolve) => (responderAntiga = resolve)))
-      .mockResolvedValueOnce([resultado('nova')])
-    const { result } = renderHook(() =>
-      useBuscaViewModel({ repositorio: { buscar }, categoriasRepositorio }),
+  it('mostra a mensagem da Falha quando a busca dá erro', async () => {
+    const buscar = vi.fn().mockRejectedValue(new Falha('Sem internet.', 'rede'))
+    const { result } = abrir(buscar)
+
+    await waitFor(() => expect(result.current.erro).toBe('Sem internet.'))
+    expect(result.current.carregando).toBe(false)
+  })
+
+  it('avisa quando não consegue ler as categorias', async () => {
+    const { result, buscar } = abrir(
+      buscaFalsa(),
+      vi.fn().mockRejectedValue(new Falha('Categorias fora do ar.', 'rede')),
     )
 
-    act(() => result.current.alterarTexto('bro'))
+    await waitFor(() => expect(result.current.erroCategorias).toBe('Categorias fora do ar.'))
+    expect(buscar).not.toHaveBeenCalled()
+  })
+
+  it('só vale a resposta da última consulta, mesmo se uma antiga chegar depois', async () => {
+    let soltarAntiga: (r: ResultadoBusca[]) => void = () => {}
+    const buscar = vi
+      .fn()
+      .mockResolvedValueOnce([brownie, cafe])
+      .mockImplementationOnce(() => new Promise((ok) => (soltarAntiga = ok)))
+      .mockResolvedValueOnce([chaveiro])
+    const { result } = await aberto(buscar)
+
+    act(() => result.current.alterarTexto('brownie'))
     let antiga: Promise<void> = Promise.resolve()
     act(() => {
       antiga = result.current.buscar()
     })
-    act(() => result.current.alterarTexto('brownie'))
-    await act(() => result.current.buscar())
+    await act(() => result.current.trocarAba(2))
     await act(async () => {
-      responderAntiga([resultado('antiga')])
+      soltarAntiga([brownie])
       await antiga
     })
 
-    expect(result.current.resultados.map((r) => r.item.id)).toEqual(['nova'])
+    expect(result.current.disponiveis.map((r) => r.item.nome)).toEqual(['Chaveiro'])
   })
 
-  it('carrega a árvore e mostra as categorias da raiz, sem nenhuma escolhida', async () => {
-    const { result } = await aberto()
-    expect(result.current.subcategorias.map((c) => c.nome)).toEqual([
-      'Alimentação',
-      'Outros produtos',
-    ])
-    expect(result.current.categoriaAtual).toBeNull()
-    expect(result.current.caminho).toEqual([])
+  it('guarda tudo na memória: abrir de novo mostra a mesma tela e só renova a lista', async () => {
+    const primeira = await aberto()
+    act(() => primeira.result.current.alterarTexto('brownie'))
+    await act(() => primeira.result.current.buscar())
+    act(() => primeira.result.current.escolherAtalho(7))
+    primeira.unmount()
+
+    let soltar: (r: ResultadoBusca[]) => void = () => {}
+    const buscar = vi.fn(() => new Promise<ResultadoBusca[]>((ok) => (soltar = ok)))
+    const { result } = abrir(buscar)
+
+    // Enquanto a lista se renova, a tela já está como antes, sem "Carregando…".
+    expect(result.current.texto).toBe('brownie')
+    expect(result.current.buscado).toBe('brownie')
+    expect(result.current.atalhoAtual?.nome).toBe('Brownie')
+    expect(result.current.disponiveis.map((r) => r.item.nome)).toEqual(['Brownie de chocolate'])
+    await waitFor(() => expect(buscar).toHaveBeenCalledWith({ texto: 'brownie', categoriaId: 1 }))
+    expect(result.current.carregando).toBe(false)
+
+    await act(async () => soltar([brownie, esgotado]))
+    expect(result.current.esgotados).toHaveLength(1)
   })
 
-  it('escolher Alimentação busca os itens dela e mostra Bebidas e Doces embaixo (US12)', async () => {
-    const { result, buscar } = await aberto()
+  it('limparMemoriaDaBusca esquece a busca anterior', async () => {
+    const { result, unmount } = await aberto()
+    act(() => result.current.alterarTexto('brownie'))
+    unmount()
 
-    await act(() => result.current.escolherCategoria(1))
+    limparMemoriaDaBusca()
 
-    expect(buscar).toHaveBeenCalledWith({ texto: '', categoriaId: 1 })
-    expect(result.current.resultados).toHaveLength(1)
-    expect(result.current.categoriaAtual?.nome).toBe('Alimentação')
-    expect(result.current.subcategorias.map((c) => c.nome)).toEqual(['Bebidas', 'Doces'])
-  })
-
-  it('desce até Brownie: a trilha é Alimentação › Doces › Brownie e não há mais níveis', async () => {
-    const { result, buscar } = await aberto()
-
-    await act(() => result.current.escolherCategoria(1))
-    await act(() => result.current.escolherCategoria(3))
-    await act(() => result.current.escolherCategoria(7))
-
-    expect(buscar).toHaveBeenLastCalledWith({ texto: '', categoriaId: 7 })
-    expect(result.current.caminho.map((c) => c.nome)).toEqual(['Alimentação', 'Doces', 'Brownie'])
-    expect(result.current.subcategorias).toEqual([])
-  })
-
-  it('com categoria, o texto filtra dentro dela e pode ter 1 letra só', async () => {
-    const { result, buscar } = await aberto()
-    await act(() => result.current.escolherCategoria(3))
-    act(() => result.current.alterarTexto('c'))
-
-    await act(() => result.current.buscar())
-
-    expect(buscar).toHaveBeenLastCalledWith({ texto: 'c', categoriaId: 3 })
-    expect(result.current.erro).toBeNull()
-  })
-
-  it('guarda o que foi buscado, com a categoria, para a mensagem de nada encontrado', async () => {
-    const { result } = await aberto(falso(vi.fn().mockResolvedValue([])))
-    await act(() => result.current.escolherCategoria(3))
-
-    expect(result.current.buscado).toEqual({ texto: '', categoria: categorias[1] })
-  })
-
-  it('voltar para "Todas" sem texto limpa os resultados sem chamar o repositório', async () => {
-    const { result, buscar } = await aberto()
-    await act(() => result.current.escolherCategoria(1))
-
-    await act(() => result.current.escolherCategoria(null))
-
-    expect(buscar).toHaveBeenCalledOnce()
-    expect(result.current.resultados).toEqual([])
-    expect(result.current.buscou).toBe(false)
-    expect(result.current.erro).toBeNull()
-  })
-
-  it('sem texto e sem categoria, pede uma das duas coisas', async () => {
-    const { result, buscar } = await aberto()
-
-    await act(() => result.current.buscar())
-
-    expect(buscar).not.toHaveBeenCalled()
-    expect(result.current.erro).toBe('Digite pelo menos 2 letras ou escolha uma categoria.')
-  })
-
-  it('avisa quando não consegue carregar as categorias', async () => {
-    const { result } = renderHook(() =>
-      useBuscaViewModel({
-        ...falso(),
-        categoriasRepositorio: {
-          listarCategorias: vi
-            .fn()
-            .mockRejectedValue(
-              new Falha('Não foi possível carregar as categorias. Tente de novo.', 'rede'),
-            ),
-        },
-      }),
-    )
-
-    await waitFor(() =>
-      expect(result.current.erroCategorias).toBe(
-        'Não foi possível carregar as categorias. Tente de novo.',
-      ),
-    )
+    expect(useMemoriaDaBusca.getState()).toMatchObject({ texto: '', abaId: null, lista: [] })
   })
 })

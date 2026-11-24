@@ -27,6 +27,7 @@ function paraResultado(linha: LinhaBusca): ResultadoBusca {
     ),
     vendedorNome: linha.vendedor_nome,
     noCampusAgora: linha.no_campus_agora,
+    referencia: linha.referencia || null,
   }
 }
 
@@ -58,5 +59,17 @@ export class SupabaseBuscaRepository implements BuscaRepository {
       )
     }
     return data.map(paraResultado)
+  }
+
+  async detalhar(itemId: string): Promise<ResultadoBusca | null> {
+    const { data, error } = await this.client.rpc('buscar_itens', { item: itemId })
+
+    if (error || !data) {
+      throw new Falha(
+        'Não foi possível abrir o item agora. Tente de novo.',
+        error?.code ?? 'desconhecido',
+      )
+    }
+    return data.length > 0 ? paraResultado(data[0]) : null
   }
 }

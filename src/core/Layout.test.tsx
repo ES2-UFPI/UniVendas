@@ -1,11 +1,21 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Usuario } from '../features/auth/domain/Usuario'
+import { useMemoriaDaBusca } from '../features/busca/presentation/memoriaDaBusca'
 import { Layout } from './Layout'
 import { lerModo } from './modoDeUso'
 import { ROTAS } from './routes'
 import { useSessaoStore } from './sessaoStore'
+
+// O botão de sair de verdade fala com o Supabase; aqui ele só avisa que saiu.
+vi.mock('../features/auth/presentation/BotaoSair', () => ({
+  BotaoSair: ({ aoSair }: { aoSair?: () => void }) => (
+    <button type="button" onClick={aoSair}>
+      Sair
+    </button>
+  ),
+}))
 
 afterEach(() => {
   cleanup()
@@ -52,6 +62,16 @@ describe('Layout (US20)', () => {
     expect(within(cabecalho).getByRole('button', { name: 'Sair' })).toBeInTheDocument()
   })
 
+  it('ao sair, esquece a busca de quem saiu (a próxima pessoa no aparelho não a herda)', () => {
+    useMemoriaDaBusca.setState({ texto: 'brownie' })
+    abrir(consumidor)
+    fireEvent.click(screen.getByRole('button', { name: 'Conta de Ana' }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sair' }))
+
+    expect(useMemoriaDaBusca.getState().texto).toBe('')
+  })
+
   it('o menu da conta fecha com Esc', () => {
     abrir(consumidor)
     const conta = screen.getByRole('button', { name: 'Conta de Ana' })
@@ -72,6 +92,22 @@ describe('Layout (US20)', () => {
     abrir(consumidor, ROTAS.conversas)
     expect(screen.getByRole('link', { name: 'Conversas' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: 'Mapa' })).not.toHaveAttribute('aria-current')
+  })
+
+  it('o detalhe de um item acende a aba Buscar', () => {
+    abrir(consumidor, '/item/i1')
+    expect(screen.getByRole('link', { name: 'Buscar' })).toHaveClass('text-marca-600')
+    expect(screen.getByRole('link', { name: 'Mapa' })).not.toHaveClass('text-marca-600')
+  })
+
+  it('uma conversa acende a aba Conversas, e o perfil de um vendedor, a aba Mapa', () => {
+    abrir(consumidor, '/conversa/c1')
+    expect(screen.getByRole('link', { name: 'Conversas' })).toHaveClass('text-marca-600')
+    cleanup()
+
+    abrir(consumidor, '/vendedor/v1')
+    expect(screen.getByRole('link', { name: 'Mapa' })).toHaveClass('text-marca-600')
+    expect(screen.getByRole('link', { name: 'Conversas' })).not.toHaveClass('text-marca-600')
   })
 
   it('mostra a tela dentro do layout', () => {

@@ -10,19 +10,3 @@ const ordem = (a: Categoria, b: Categoria) => a.nome.localeCompare(b.nome, 'pt-B
 export function filhasDe(categorias: Categoria[], paiId: number | null): Categoria[] {
   return categorias.filter((c) => c.categoriaPaiId === paiId).sort(ordem)
 }
-
-/**
- * O caminho da raiz até a categoria, para a trilha "Todas › Alimentação › Doces".
- * Com `null` ou id que não está na lista, devolve vazio.
- */
-export function caminhoAte(categorias: Categoria[], id: number | null): Categoria[] {
-  const porId = new Map(categorias.map((c) => [c.id, c]))
-  const caminho: Categoria[] = []
-  const vistos = new Set<number>()
-  for (let atual = id === null ? undefined : porId.get(id); atual && !vistos.has(atual.id);) {
-    vistos.add(atual.id)
-    caminho.unshift(atual)
-    atual = atual.categoriaPaiId === null ? undefined : porId.get(atual.categoriaPaiId)
-  }
-  return caminho
-}

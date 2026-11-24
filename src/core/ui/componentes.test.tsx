@@ -120,6 +120,20 @@ describe('CartaoItem e Selo', () => {
     expect(screen.getByText('R$ 5,00')).toBeInTheDocument()
   })
 
+  it('mostra onde achar e aceita o título como h4, para seguir os títulos da tela', () => {
+    render(
+      <CartaoItem
+        nome="Café"
+        preco={4}
+        fotoUrl={null}
+        local="Perto da Biblioteca"
+        nivelTitulo={4}
+      />,
+    )
+    expect(screen.getByRole('heading', { level: 4, name: 'Café' })).toBeInTheDocument()
+    expect(screen.getByText('Perto da Biblioteca')).toBeInTheDocument()
+  })
+
   it('esgotado fica riscado (RN09)', () => {
     render(<CartaoItem nome="Ecobag" preco={25} fotoUrl={null} esgotado />)
     expect(screen.getByRole('heading', { name: 'Ecobag' })).toHaveClass('line-through')

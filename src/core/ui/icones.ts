@@ -2,6 +2,7 @@
 export const ICONES = {
   mais: 'M12 5v14M5 12h14',
   voltar: 'M19 12H5m6-6-6 6 6 6',
+  setaDiagonal: 'M7 17 17 7M7 7h10v10',
   avancar: 'M5 12h14m-6-6 6 6-6 6',
   lixeira: 'M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7',
   lapis: 'M4 20h4L19 9l-4-4L4 16v4ZM13 7l4 4',
