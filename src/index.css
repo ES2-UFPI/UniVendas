@@ -1,13 +1,36 @@
 @import 'tailwindcss';
 
-/* Cores da marca, usadas como classes do Tailwind: bg-marca-700, text-tinta, border-borda... */
+/*
+ * Tema do UniVendas (US21), igual ao "Componentes comuns" do Paper.
+ * Vira classe do Tailwind: bg-acao, text-tinta, border-linha, font-titulo, rounded-controle...
+ */
 @theme {
-  --color-marca-50: #d8f4d8;
-  --color-marca-500: #16a34a;
+  --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-titulo:
+    'Archivo Black', 'DM Sans', ui-sans-serif, sans-serif; /* títulos de tela e rótulos */
+
+  /* Verdes da marca. */
+  --color-marca-50: #f0fdf4; /* fundo suave: avisos de sucesso, prévias, conversa escolhida */
+  --color-marca-500: #16a34a; /* marca: símbolo da logo */
+  --color-marca-600: #15803d; /* ações: botões, links, aba escolhida */
   --color-marca-700: #15753a;
   --color-marca-800: #135631;
-  --color-marca-900: #174c2c;
-  --color-tinta: #152b21;
-  --color-tinta-suave: #4c5b53;
-  --color-borda: #86968b;
+  --color-marca-900: #14532d; /* verde profundo: nome da logo e preços */
+  --color-ouro: #eab308; /* dobra do meio da logo */
+
+  /* Texto e superfícies. */
+  --color-tinta: #192c22; /* texto principal */
+  --color-tinta-suave: #607267; /* texto de apoio */
+  --color-borda: #cbd8ce; /* borda de campos */
+  --color-linha: #dce6de; /* divisórias e bordas de cartões */
+  --color-campo: #f3f6f3; /* fundo do campo de busca */
+  --color-cartao: #f5f8f4; /* fundo de cartões e atalhos */
+
+  /* Estados. */
+  --color-perigo: #b91c1c;
+  --color-alerta: #92400e;
+  --color-info: #1d4ed8;
+
+  --radius-controle: 12px; /* botões e campos */
+  --radius-cartao: 20px;
 }

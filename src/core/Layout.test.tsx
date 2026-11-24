@@ -36,16 +36,35 @@ function abas() {
 }
 
 describe('Layout (US20)', () => {
-  it('põe o nome do app, quem está logado e o botão de sair no cabeçalho', () => {
-    abrir(consumidor)
+  it('põe a marca e as iniciais de quem está logado no cabeçalho; o menu da conta tem o botão de sair', () => {
+    abrir(new Usuario('u1', 'Maria Eduarda', 'duda@x.com'))
     const cabecalho = screen.getByRole('banner')
     expect(within(cabecalho).getByText('UniVendas')).toBeInTheDocument()
-    expect(within(cabecalho).getByText('Ana')).toBeInTheDocument()
+    const conta = within(cabecalho).getByRole('button', { name: 'Conta de Maria Eduarda' })
+    expect(conta).toHaveTextContent('ME')
+    expect(conta).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('button', { name: 'Sair' })).not.toBeInTheDocument()
+
+    fireEvent.click(conta)
+
+    expect(conta).toHaveAttribute('aria-expanded', 'true')
+    expect(within(cabecalho).getByText('duda@x.com')).toBeInTheDocument()
     expect(within(cabecalho).getByRole('button', { name: 'Sair' })).toBeInTheDocument()
   })
 
-  it('leva os links na barra de baixo, não no cabeçalho', () => {
+  it('o menu da conta fecha com Esc', () => {
     abrir(consumidor)
+    const conta = screen.getByRole('button', { name: 'Conta de Ana' })
+    fireEvent.click(conta)
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    expect(conta).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('as abas ficam numa navegação só, fora do cabeçalho (no computador ela sobe para o topo)', () => {
+    abrir(consumidor)
+    expect(screen.getAllByRole('navigation')).toHaveLength(1)
     expect(within(screen.getByRole('banner')).queryAllByRole('link')).toHaveLength(0)
   })
 
