@@ -1,3 +1,5 @@
+import { Botao } from '../../../core/ui/Botao'
+import { Icone } from '../../../core/ui/Icone'
 import type { AuthRepository } from '../domain/AuthRepository'
 import { useExcluirContaViewModel } from './useExcluirContaViewModel'
 
@@ -20,53 +22,53 @@ export function ExcluirContaSecao({ aoExcluir, repositorio }: ExcluirContaSecaoP
   }
 
   return (
-    <section aria-labelledby="titulo-excluir-conta" className="mt-8 border-t border-gray-200 pt-6">
-      <h3 id="titulo-excluir-conta" className="font-semibold text-gray-900">
+    <section
+      aria-labelledby="titulo-excluir-conta"
+      className="flex flex-col gap-3 rounded-cartao border border-red-200 bg-white p-5 md:p-6"
+    >
+      <h3 id="titulo-excluir-conta" className="font-titulo text-lg tracking-[-0.035em] text-perigo">
         Excluir minha conta
       </h3>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="text-sm text-tinta-suave">
         Apaga a sua conta e tudo o que está nela: perfil, fotos, itens, contatos, presença e
         conversas.
       </p>
 
       {!vm.confirmando ? (
-        <button
-          type="button"
-          onClick={vm.pedir}
-          className="mt-3 w-full rounded-lg border border-red-600 px-4 py-3 font-semibold text-red-700 hover:bg-red-50"
-        >
+        <Botao variante="perigo" icone="lixeira" onClick={vm.pedir} className="self-start">
           Excluir minha conta
-        </button>
+        </Botao>
       ) : (
         <div
           role="alertdialog"
           aria-label="Excluir minha conta?"
-          className="mt-3 flex flex-col gap-3 rounded-lg border border-red-200 bg-red-50 p-3"
+          className="flex flex-col gap-3 rounded-controle bg-red-50 p-4"
         >
-          <p className="text-sm text-red-900">
-            <strong>Isso não pode ser desfeito.</strong> Sua conta e todos os seus dados serão
-            apagados para sempre.
+          <p className="text-[15px] text-tinta">
+            <strong className="text-perigo">Isso não pode ser desfeito.</strong> Sua conta e todos
+            os seus dados serão apagados para sempre.
           </p>
           {vm.erro && (
-            <p role="alert" className="text-sm text-red-800">
+            <p role="alert" className="text-sm text-perigo">
               {vm.erro}
             </p>
           )}
-          <div className="flex gap-2">
-            <button
-              type="button"
+          <div className="flex flex-wrap gap-2">
+            <Botao
+              variante="secundario"
               onClick={vm.cancelar}
               disabled={vm.excluindo}
-              className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-60"
+              className="flex-1"
             >
               Cancelar
-            </button>
+            </Botao>
             <button
               type="button"
               onClick={() => void confirmar()}
               disabled={vm.excluindo}
-              className="flex-1 rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+              className="inline-flex min-h-[50px] flex-1 items-center justify-center gap-2.5 rounded-controle bg-perigo px-5 py-2 font-bold text-white hover:bg-red-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-perigo disabled:opacity-45"
             >
+              <Icone nome="lixeira" className="h-[18px] w-[18px]" />
               {vm.excluindo ? 'Excluindo…' : 'Sim, excluir minha conta'}
             </button>
           </div>

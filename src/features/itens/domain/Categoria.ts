@@ -40,3 +40,28 @@ export function agruparFolhas(categorias: Categoria[]): GrupoDeFolhas[] {
     .sort(([a], [b]) => ordem(a, b))
     .map(([grupo, folhas]) => ({ grupo, folhas: folhas.sort((a, b) => ordem(a.nome, b.nome)) }))
 }
+
+/** As categorias de cima da árvore (ex.: Alimentação, Outros produtos), em ordem alfabética. */
+export function raizes(categorias: Categoria[]): Categoria[] {
+  return categorias
+    .filter((c) => c.categoriaPaiId === null)
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+}
+
+/**
+ * A raiz da árvore onde está a categoria `id` (ex.: Brownie fica em Alimentação). É o "tipo de
+ * produto" do formulário do item. Devolve undefined se o id for nulo ou não estiver na lista.
+ */
+export function raizDe(id: number | null, categorias: Categoria[]): Categoria | undefined {
+  const porId = new Map(categorias.map((c) => [c.id, c]))
+  let atual = id === null ? undefined : porId.get(id)
+  // O limite de voltas protege de uma árvore com ciclo, que não deveria existir.
+  for (
+    let voltas = 0;
+    atual && atual.categoriaPaiId !== null && voltas < categorias.length;
+    voltas++
+  ) {
+    atual = porId.get(atual.categoriaPaiId)
+  }
+  return atual
+}

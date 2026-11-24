@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Falha } from '../../../core/falha'
@@ -203,5 +203,38 @@ describe('MeuPerfilPage: ocultar números (US19)', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('Perfil atualizado.')
     const [, enviados] = atualizarPerfil.mock.calls[0] as unknown as [unknown, Contato[]]
     expect(enviados).toEqual([new Contato('whatsapp', '5586999998888', false)])
+  })
+})
+
+describe('MeuPerfilPage: visual novo (US21)', () => {
+  const previa = () => screen.getByRole('complementary', { name: 'Como seu perfil vai aparecer' })
+
+  it('mostra o título, o "Trocar foto do perfil" e a prévia com os dados salvos', async () => {
+    const comFoto = new VendedorAmbulante(
+      'v1',
+      'u1',
+      'Brownies da Ana',
+      'Brownie e café',
+      'https://exemplo.test/ana.jpg',
+    )
+    abrir({ doUsuario: vi.fn().mockResolvedValue(comFoto) })
+    await nome()
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Meu perfil' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Trocar foto do perfil')).toHaveAttribute('type', 'file')
+    expect(previa().querySelector('img')).toHaveAttribute('src', 'https://exemplo.test/ana.jpg')
+    expect(within(previa()).getByText('Brownies da Ana')).toBeInTheDocument()
+    expect(within(previa()).getByText('Brownie e café')).toBeInTheDocument()
+    expect(within(previa()).getByText('WhatsApp')).toBeInTheDocument()
+  })
+
+  it('a prévia acompanha o que a pessoa digita e esconde o número oculto', async () => {
+    abrir()
+    fireEvent.change(await nome(), { target: { value: 'Doces da Ana' } })
+
+    expect(within(previa()).getByText('Doces da Ana')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('switch', { name: 'Mostrar WhatsApp' }))
+    expect(within(previa()).queryByText('WhatsApp')).not.toBeInTheDocument()
+    expect(within(previa()).getByText('Chat')).toBeInTheDocument()
   })
 })

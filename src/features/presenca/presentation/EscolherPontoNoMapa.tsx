@@ -27,11 +27,12 @@ function AoTocar({ aoEscolher, bloqueado }: Omit<EscolherPontoNoMapaProps, 'pont
  */
 export function EscolherPontoNoMapa({ ponto, aoEscolher, bloqueado }: EscolherPontoNoMapaProps) {
   return (
-    <div aria-label="Mapa para escolher o ponto" role="group">
+    // `isolate`: as camadas do Leaflet ficam presas aqui dentro, abaixo do cabeçalho.
+    <div aria-label="Mapa para escolher o ponto" role="group" className="isolate">
       <MapContainer
         center={CENTRO_DO_CAMPUS}
         zoom={ZOOM_INICIAL}
-        className="h-64 w-full rounded-lg"
+        className="h-72 w-full rounded-cartao border border-linha md:h-[390px]"
       >
         <TileLayer
           url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"

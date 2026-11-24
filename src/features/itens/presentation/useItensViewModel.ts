@@ -253,6 +253,8 @@ export function useItensViewModel({
     carregando,
     semPerfil,
     erro,
+    /** True quando o perfil de vendedor já carregou e dá para cadastrar itens. */
+    podeCadastrar: vendedorId !== null,
     remover,
     alternarDisponibilidade,
     formularioAberto,

@@ -50,6 +50,18 @@ describe('MeusItensPage', () => {
     // O Intl separa o "R$" do valor com um espaço especial (não quebrável).
     expect(screen.getByText(/^R\$\s5,50$/)).toBeInTheDocument()
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect(screen.getByRole('heading', { name: 'Meus itens' })).toBeInTheDocument()
+  })
+
+  it('resume quantos itens há, quantos estão disponíveis e quantos esgotados', async () => {
+    abrir({
+      listar: vi
+        .fn()
+        .mockResolvedValue([brownie, new Item('i2', 'v1', 12, 'Café', 3, '', null, false)]),
+    })
+
+    expect(await screen.findByText('2 itens cadastrados')).toBeInTheDocument()
+    expect(screen.getByText('1 disponível · 1 esgotado')).toBeInTheDocument()
   })
 
   it('avisa quando ainda não há itens', async () => {
@@ -109,30 +121,31 @@ describe('MeusItensPage', () => {
   })
 })
 
-describe('MeusItensPage: disponível e esgotado (RN08)', () => {
-  it('um toque marca o item como esgotado e o botão passa a oferecer "disponível"', async () => {
-    const { alternarDisponibilidade } = abrir()
+const interruptor = (nome: string) => screen.findByRole('switch', { name: `${nome} disponível` })
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Marcar como esgotado: Brownie' }))
+describe('MeusItensPage: disponível e esgotado (RN08)', () => {
+  it('um toque no interruptor marca o item como esgotado', async () => {
+    const { alternarDisponibilidade } = abrir()
+    expect(await interruptor('Brownie')).toHaveAttribute('aria-checked', 'true')
+
+    fireEvent.click(await interruptor('Brownie'))
 
     expect(await screen.findByText('Esgotado')).toBeInTheDocument()
     expect(alternarDisponibilidade).toHaveBeenCalledWith('i1', false)
-    expect(
-      screen.getByRole('button', { name: 'Marcar como disponível: Brownie' }),
-    ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Marcar como esgotado: Café' })).toBeInTheDocument()
+    expect(await interruptor('Brownie')).toHaveAttribute('aria-checked', 'false')
+    expect(await interruptor('Café')).toHaveAttribute('aria-checked', 'true')
   })
 
   it('um segundo toque volta o item a disponível', async () => {
     const { alternarDisponibilidade } = abrir()
-    fireEvent.click(await screen.findByRole('button', { name: 'Marcar como esgotado: Brownie' }))
+    fireEvent.click(await interruptor('Brownie'))
+    await screen.findByText('Esgotado')
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Marcar como disponível: Brownie' }))
+    fireEvent.click(await interruptor('Brownie'))
 
     await waitFor(() => expect(alternarDisponibilidade).toHaveBeenLastCalledWith('i1', true))
-    expect(
-      await screen.findByRole('button', { name: 'Marcar como esgotado: Brownie' }),
-    ).toBeEnabled()
+    await waitFor(async () => expect(await interruptor('Brownie')).toBeEnabled())
+    expect(await interruptor('Brownie')).toHaveAttribute('aria-checked', 'true')
     expect(screen.queryByText('Esgotado')).not.toBeInTheDocument()
   })
 
@@ -145,15 +158,16 @@ describe('MeusItensPage: disponível e esgotado (RN08)', () => {
         ),
     })
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Marcar como esgotado: Brownie' }))
+    fireEvent.click(await interruptor('Brownie'))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Este item não existe mais')
     expect(screen.queryByText('Esgotado')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Marcar como esgotado: Brownie' })).toBeEnabled()
+    await waitFor(async () => expect(await interruptor('Brownie')).toBeEnabled())
+    expect(await interruptor('Brownie')).toHaveAttribute('aria-checked', 'true')
   })
 })
 
-describe('MeusItensPage: formulário de criar e editar', () => {
+describe('MeusItensPage: formulário de adicionar e editar', () => {
   const categorias = [
     { id: 3, nome: 'Doces', categoriaPaiId: null, folha: false },
     { id: 7, nome: 'Brownie', categoriaPaiId: 3, folha: true },
@@ -165,6 +179,7 @@ describe('MeusItensPage: formulário de criar e editar', () => {
       Promise.resolve(new Item('i9', item.vendedorId, item.categoriaId, item.nome, item.preco)),
     ),
     editar = vi.fn((item: Item) => Promise.resolve(item)),
+    arvore = categorias,
   } = {}) {
     render(
       <MemoryRouter>
@@ -178,7 +193,7 @@ describe('MeusItensPage: formulário de criar e editar', () => {
           repositorio={
             {
               listar: vi.fn().mockResolvedValue([brownie, cafe]),
-              listarCategorias: vi.fn().mockResolvedValue(categorias),
+              listarCategorias: vi.fn().mockResolvedValue(arvore),
               criar,
               editar,
             } as unknown as ItemRepository
@@ -190,20 +205,65 @@ describe('MeusItensPage: formulário de criar e editar', () => {
     return { criar, editar }
   }
 
+  const lista = () => within(screen.getByRole('list'))
+
+  it('já mostra o formulário "Adicionar item" ao lado da lista', async () => {
+    abrirComFormulario()
+
+    expect(await screen.findByRole('heading', { name: 'Adicionar item' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Nome do item')).toHaveValue('')
+    expect(screen.getByLabelText('Adicionar foto')).toHaveAttribute('type', 'file')
+  })
+
+  it('não mostra o formulário quando a conta não tem perfil de vendedor', async () => {
+    abrir({ doUsuario: vi.fn().mockResolvedValue(null) })
+
+    await screen.findByRole('link', { name: 'perfil de vendedor' })
+    expect(screen.queryByRole('heading', { name: 'Adicionar item' })).not.toBeInTheDocument()
+  })
+
   it('só oferece as categorias folha, agrupadas pela categoria pai (RN07)', async () => {
     abrirComFormulario()
-    fireEvent.click(await screen.findByRole('button', { name: 'Novo item' }))
+    await screen.findByRole('option', { name: 'Bolo' })
 
     const opcoes = within(screen.getByLabelText('Categoria')).getAllByRole('option')
     expect(opcoes.map((o) => o.textContent)).toEqual(['Escolha a categoria', 'Bolo', 'Brownie'])
     expect(screen.getByRole('group', { name: 'Doces' })).toBeInTheDocument()
   })
 
+  it('o tipo de produto (a raiz da árvore) filtra as categorias', async () => {
+    abrirComFormulario({
+      arvore: [
+        { id: 1, nome: 'Alimentação', categoriaPaiId: null, folha: false },
+        { id: 2, nome: 'Outros produtos', categoriaPaiId: null, folha: false },
+        { id: 3, nome: 'Doces', categoriaPaiId: 1, folha: false },
+        { id: 7, nome: 'Brownie', categoriaPaiId: 3, folha: true },
+        { id: 20, nome: 'Artesanato', categoriaPaiId: 2, folha: true },
+      ],
+    })
+    const outros = await screen.findByRole('button', { name: 'Outros produtos' })
+    const opcoes = () =>
+      within(screen.getByLabelText('Categoria'))
+        .getAllByRole('option')
+        .map((o) => o.textContent)
+    expect(opcoes()).toEqual(['Escolha a categoria', 'Brownie', 'Artesanato'])
+
+    fireEvent.click(outros)
+
+    expect(outros).toHaveAttribute('aria-pressed', 'true')
+    expect(opcoes()).toEqual(['Escolha a categoria', 'Artesanato'])
+    fireEvent.change(screen.getByLabelText('Categoria'), { target: { value: '20' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Alimentação' }))
+
+    expect(opcoes()).toEqual(['Escolha a categoria', 'Brownie'])
+    expect(screen.getByLabelText('Categoria')).toHaveValue('')
+  })
+
   it('mostra os erros e não salva com o formulário vazio', async () => {
     const { criar } = abrirComFormulario()
-    fireEvent.click(await screen.findByRole('button', { name: 'Novo item' }))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Adicionar item' }))
 
     expect(await screen.findByText('Informe o nome do item.')).toBeInTheDocument()
     expect(screen.getByText('Informe o preço.')).toBeInTheDocument()
@@ -211,43 +271,53 @@ describe('MeusItensPage: formulário de criar e editar', () => {
     expect(criar).not.toHaveBeenCalled()
   })
 
-  it('cria o item e volta para a lista com ele', async () => {
+  it('adiciona o item na lista e o formulário volta vazio', async () => {
     const { criar } = abrirComFormulario()
-    fireEvent.click(await screen.findByRole('button', { name: 'Novo item' }))
+    await screen.findByRole('heading', { name: 'Adicionar item' })
+    await screen.findByRole('option', { name: 'Bolo' })
 
-    fireEvent.change(screen.getByLabelText('Nome'), { target: { value: 'Bolo de cenoura' } })
-    fireEvent.change(screen.getByLabelText('Preço (R$)'), { target: { value: '4,50' } })
+    fireEvent.change(screen.getByLabelText('Nome do item'), {
+      target: { value: 'Bolo de cenoura' },
+    })
+    fireEvent.change(screen.getByLabelText('Preço'), { target: { value: '4,50' } })
     fireEvent.change(screen.getByLabelText('Categoria'), { target: { value: '8' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar item' }))
 
-    expect(await screen.findByText('Bolo de cenoura')).toBeInTheDocument()
+    expect(await lista().findByText('Bolo de cenoura')).toBeInTheDocument()
     expect(criar).toHaveBeenCalledOnce()
-    expect(screen.queryByRole('button', { name: 'Salvar' })).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.getByLabelText('Nome do item')).toHaveValue(''))
+    expect(screen.getByText('3 itens cadastrados')).toBeInTheDocument()
   })
 
-  it('"Editar" preenche o formulário com os dados do item e salva a mudança', async () => {
+  it('"Editar" leva o item para o formulário e salva a mudança', async () => {
     const { editar } = abrirComFormulario()
+    await screen.findByRole('option', { name: 'Bolo' })
     fireEvent.click(await screen.findByRole('button', { name: 'Editar Brownie' }))
 
     expect(screen.getByRole('heading', { name: 'Editar item' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Nome')).toHaveValue('Brownie')
-    expect(screen.getByLabelText('Preço (R$)')).toHaveValue('5,50')
+    expect(screen.getByLabelText('Nome do item')).toHaveValue('Brownie')
+    expect(screen.getByLabelText('Nome do item')).toHaveFocus()
+    expect(screen.getByLabelText('Preço')).toHaveValue('5,50')
     expect(screen.getByLabelText('Categoria')).toHaveValue('7')
+    expect(screen.getByRole('button', { name: 'Doces' })).toHaveAttribute('aria-pressed', 'true')
 
-    fireEvent.change(screen.getByLabelText('Preço (R$)'), { target: { value: '6' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    fireEvent.change(screen.getByLabelText('Preço'), { target: { value: '6' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
 
     await waitFor(() => expect(editar).toHaveBeenCalledOnce())
     expect(await screen.findByText(/^R\$\s6,00$/)).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Adicionar item' })).toBeInTheDocument()
   })
 
-  it('"Cancelar" volta para a lista sem salvar', async () => {
-    const { criar } = abrirComFormulario()
-    fireEvent.click(await screen.findByRole('button', { name: 'Novo item' }))
+  it('"Cancelar edição" volta a adicionar item sem salvar', async () => {
+    const { editar } = abrirComFormulario()
+    fireEvent.click(await screen.findByRole('button', { name: 'Editar Brownie' }))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar edição' }))
 
-    expect(screen.getByText('Brownie')).toBeInTheDocument()
-    expect(criar).not.toHaveBeenCalled()
+    expect(await screen.findByRole('heading', { name: 'Adicionar item' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Nome do item')).toHaveValue('')
+    expect(lista().getByText('Brownie')).toBeInTheDocument()
+    expect(editar).not.toHaveBeenCalled()
   })
 })

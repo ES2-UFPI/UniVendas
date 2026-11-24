@@ -297,7 +297,12 @@ export function AppRotas({
           <Route path={ROTAS.queroVender} element={<QueroVender />} />
           <Route
             path={ROTAS.painel}
-            element={<PainelVendedorPage repositorio={presencaRepositorio} />}
+            element={
+              <PainelVendedorPage
+                repositorio={presencaRepositorio}
+                vendedores={vendedorRepositorio}
+              />
+            }
           />
           <Route path={ROTAS.meuPerfil} element={<MeuPerfil repositorio={vendedorRepositorio} />} />
           <Route
