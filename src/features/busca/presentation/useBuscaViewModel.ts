@@ -1,14 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { Falha } from '../../../core/falha'
-import type { Categoria } from '../../itens/domain/Categoria'
 import { SupabaseItemRepository } from '../../itens/data/SupabaseItemRepository'
 import { SupabaseBuscaRepository } from '../data/SupabaseBuscaRepository'
-import {
-  MINIMO_LETRAS_BUSCA,
-  type BuscaRepository,
-  type ResultadoBusca,
-} from '../domain/BuscaRepository'
-import { caminhoAte, filhasDe, type FonteCategorias } from '../domain/navegacaoCategorias'
+import { atalhosDe } from '../domain/atalhos'
+import { MINIMO_LETRAS_BUSCA, type BuscaRepository } from '../domain/BuscaRepository'
+import { filhasDe, type FonteCategorias } from '../domain/navegacaoCategorias'
+import { chaveDaLista, useMemoriaDaBusca } from './memoriaDaBusca'
 
 interface Opcoes {
   /** Nos testes, um repositório falso; no app, o do Supabase. */
@@ -17,117 +15,164 @@ interface Opcoes {
   categoriasRepositorio?: FonteCategorias
 }
 
-/** O que foi buscado por último, para a mensagem de "nada encontrado" não mudar enquanto a pessoa digita. */
-export interface FiltroBuscado {
-  texto: string
-  categoria: Categoria | null
-}
+const definir = useMemoriaDaBusca.setState
 
 /**
- * ViewModel da tela de busca: procura por nome de produto ou de vendedor (US11) e navega pela
- * árvore de categorias (US12). Escolher uma categoria já busca os itens dela e das filhas.
- * Os resultados vêm com os disponíveis primeiro e os esgotados depois (RN09).
+ * ViewModel da tela de busca (US11, US12, visual da US21).
+ * As abas são as categorias da raiz (Alimentação, Outros produtos) e mostram o que os vendedores
+ * oferecem nelas. Os atalhos são os tipos de produto dessa oferta e filtram a lista.
+ * O texto busca por nome de produto ou de vendedor dentro da aba.
+ * Tudo fica na memória da busca, para "Voltar à busca" reabrir a tela como estava.
  */
 export function useBuscaViewModel({ repositorio, categoriasRepositorio }: Opcoes = {}) {
-  const [texto, setTexto] = useState('')
-  const [categorias, setCategorias] = useState<Categoria[]>([])
-  const [erroCategorias, setErroCategorias] = useState<string | null>(null)
-  const [categoriaId, setCategoriaId] = useState<number | null>(null)
-  const [resultados, setResultados] = useState<ResultadoBusca[]>([])
-  const [buscando, setBuscando] = useState(false)
-  const [buscado, setBuscado] = useState<FiltroBuscado | null>(null)
+  const { categorias, abaId, texto, buscado, atalhoId, lista, listaDe } = useMemoriaDaBusca(
+    useShallow((s) => ({
+      categorias: s.categorias,
+      abaId: s.abaId,
+      texto: s.texto,
+      buscado: s.buscado,
+      atalhoId: s.atalhoId,
+      lista: s.lista,
+      listaDe: s.listaDe,
+    })),
+  )
+  const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
-  // Cada busca ganha um número; só a resposta da última vale, mesmo se uma antiga chegar depois.
-  const ultimaBusca = useRef(0)
+  const [erroCategorias, setErroCategorias] = useState<string | null>(null)
+  // Cada consulta ganha um número; só a resposta da última vale, mesmo se uma antiga chegar depois.
+  const ultimaConsulta = useRef(0)
 
+  const busca = useMemo(() => repositorio ?? new SupabaseBuscaRepository(), [repositorio])
+  const fonte = useMemo(
+    () => categoriasRepositorio ?? new SupabaseItemRepository(),
+    [categoriasRepositorio],
+  )
+
+  /**
+   * Traz os itens da aba (com o texto, se houver). `silencioso` atualiza sem esvaziar a tela,
+   * para quem volta à busca continuar vendo a lista enquanto ela se renova.
+   */
+  const carregar = useCallback(
+    async (aba: number, textoBuscado: string | null, silencioso = false) => {
+      const numero = ++ultimaConsulta.current
+      setErro(null)
+      if (!silencioso) {
+        setCarregando(true)
+        definir({ lista: [], listaDe: null })
+      }
+      try {
+        const encontrados = await busca.buscar({ texto: textoBuscado ?? '', categoriaId: aba })
+        if (numero !== ultimaConsulta.current) return
+        definir({ lista: encontrados, listaDe: chaveDaLista(aba, textoBuscado) })
+      } catch (e) {
+        if (numero !== ultimaConsulta.current) return
+        setErro(e instanceof Falha ? e.mensagem : 'Não foi possível buscar agora. Tente de novo.')
+      } finally {
+        if (numero === ultimaConsulta.current) setCarregando(false)
+      }
+    },
+    [busca],
+  )
+
+  // Ao abrir: lê as categorias, escolhe a aba (a de antes, ou a primeira) e traz a lista.
   useEffect(() => {
     let ativo = true
-    async function carregar() {
+    async function abrir() {
+      let lidas = useMemoriaDaBusca.getState().categorias
       try {
-        const lidas = await (
-          categoriasRepositorio ?? new SupabaseItemRepository()
-        ).listarCategorias()
-        if (ativo) setCategorias(lidas)
+        lidas = await fonte.listarCategorias()
+        if (!ativo) return
+        definir({ categorias: lidas })
       } catch (e) {
-        if (ativo) {
-          setErroCategorias(
-            e instanceof Falha ? e.mensagem : 'Não foi possível carregar as categorias.',
-          )
-        }
+        if (!ativo) return
+        setErroCategorias(
+          e instanceof Falha ? e.mensagem : 'Não foi possível carregar as categorias.',
+        )
+        if (lidas.length === 0) return
       }
+
+      const raizes = filhasDe(lidas, null)
+      const memoria = useMemoriaDaBusca.getState()
+      const aba = raizes.some((r) => r.id === memoria.abaId)
+        ? memoria.abaId
+        : (raizes[0]?.id ?? null)
+      if (aba === null) return
+      if (aba !== memoria.abaId) definir({ abaId: aba, atalhoId: null })
+      const jaTem = memoria.listaDe === chaveDaLista(aba, memoria.buscado)
+      await carregar(aba, memoria.buscado, jaTem)
     }
-    void carregar()
+    void abrir()
     return () => {
       ativo = false
     }
-  }, [categoriasRepositorio])
+  }, [fonte, carregar])
 
-  const caminho = useMemo(() => caminhoAte(categorias, categoriaId), [categorias, categoriaId])
-  const categoriaAtual = caminho.at(-1) ?? null
-  const subcategorias = useMemo(() => filhasDe(categorias, categoriaId), [categorias, categoriaId])
+  const abas = useMemo(() => filhasDe(categorias, null), [categorias])
+  const abaAtual = abas.find((a) => a.id === abaId) ?? null
+  const atalhos = useMemo(() => atalhosDe(lista, categorias), [lista, categorias])
+  const atalhoAtual = atalhos.find((a) => a.categoria.id === atalhoId)?.categoria ?? null
+  const visiveis = useMemo(
+    () => (atalhoId === null ? lista : lista.filter((r) => r.item.categoriaId === atalhoId)),
+    [lista, atalhoId],
+  )
 
-  async function executar(categoria: number | null): Promise<void> {
-    setErro(null)
-    const limpo = texto.trim()
-    if (categoria === null && limpo.length < MINIMO_LETRAS_BUSCA) {
-      // Voltar para "Todas" sem texto só limpa a tela; com texto curto, avisa.
-      if (limpo.length > 0) setErro(`Digite pelo menos ${MINIMO_LETRAS_BUSCA} letras.`)
-      ultimaBusca.current++
-      setResultados([])
-      setBuscado(null)
-      setBuscando(false)
-      return
-    }
-
-    const numero = ++ultimaBusca.current
-    setBuscando(true)
-    try {
-      const encontrados = await (repositorio ?? new SupabaseBuscaRepository()).buscar(
-        categoria === null ? { texto } : { texto, categoriaId: categoria },
-      )
-      if (numero !== ultimaBusca.current) return
-      setResultados(encontrados)
-      setBuscado({
-        texto: limpo,
-        categoria: categorias.find((c) => c.id === categoria) ?? null,
-      })
-    } catch (e) {
-      if (numero !== ultimaBusca.current) return
-      setResultados([])
-      setErro(e instanceof Falha ? e.mensagem : 'Não foi possível buscar agora. Tente de novo.')
-    } finally {
-      if (numero === ultimaBusca.current) setBuscando(false)
-    }
+  /** Volta para a oferta da aba, sem texto. */
+  function limparBusca() {
+    definir({ buscado: null, atalhoId: null })
+    if (abaId !== null) void carregar(abaId, null)
   }
 
-  /** Busca pelo texto digitado, dentro da categoria escolhida (se houver). */
+  function alterarTexto(novo: string) {
+    definir({ texto: novo })
+    // Apagar o campo (inclusive pelo "x" do campo de busca) volta para a oferta da aba.
+    if (novo.trim() === '' && useMemoriaDaBusca.getState().buscado !== null) limparBusca()
+  }
+
+  /** Busca o texto digitado dentro da aba. */
   async function buscar(): Promise<void> {
-    if (categoriaId === null && texto.trim().length === 0) {
-      setErro(`Digite pelo menos ${MINIMO_LETRAS_BUSCA} letras ou escolha uma categoria.`)
+    const limpo = texto.trim()
+    if (limpo.length === 0) {
+      setErro(null)
+      if (buscado !== null) limparBusca()
       return
     }
-    await executar(categoriaId)
+    if (limpo.length < MINIMO_LETRAS_BUSCA) {
+      setErro(`Digite pelo menos ${MINIMO_LETRAS_BUSCA} letras.`)
+      return
+    }
+    definir({ buscado: limpo, atalhoId: null })
+    if (abaId !== null) await carregar(abaId, limpo)
   }
 
-  /** Entra numa categoria (ou volta para "Todas", com `null`) e já mostra os itens dela. */
-  async function escolherCategoria(id: number | null): Promise<void> {
-    setCategoriaId(id)
-    await executar(id)
+  /** Troca de aba; o texto buscado continua valendo na aba nova. */
+  async function trocarAba(id: number): Promise<void> {
+    if (id === abaId) return
+    definir({ abaId: id, atalhoId: null })
+    await carregar(id, buscado)
+  }
+
+  /** Filtra a lista por um tipo de produto; escolher o mesmo de novo tira o filtro. */
+  function escolherAtalho(id: number) {
+    definir({ atalhoId: atalhoId === id ? null : id })
   }
 
   return {
     texto,
-    alterarTexto: setTexto,
-    resultados,
-    buscando,
-    buscou: buscado !== null,
-    buscado,
-    erro,
+    alterarTexto,
     buscar,
+    buscado,
+    carregando,
+    erro,
     erroCategorias,
-    caminho,
-    categoriaAtual,
-    subcategorias,
-    escolherCategoria,
+    abas,
+    abaAtual,
+    trocarAba,
+    atalhos,
+    atalhoAtual,
+    escolherAtalho,
+    disponiveis: visiveis.filter((r) => r.item.disponivel),
+    esgotados: visiveis.filter((r) => !r.item.disponivel),
+    /** Já chegou alguma lista (mesmo vazia) para a aba e o texto atuais. */
+    carregou: listaDe !== null,
   }
 }

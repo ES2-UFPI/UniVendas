@@ -1,11 +1,14 @@
-import type { FormEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, type FormEvent, type KeyboardEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { rotaPerfilVendedor } from '../../../core/routes'
-import { formatarPreco } from '../../itens/domain/validacoesItem'
+import { rotaItem } from '../../../core/routes'
 import type { Categoria } from '../../itens/domain/Categoria'
-import type { BuscaRepository, ResultadoBusca } from '../domain/BuscaRepository'
+import type { Atalho } from '../domain/atalhos'
+import type { BuscaRepository } from '../domain/BuscaRepository'
 import type { FonteCategorias } from '../domain/navegacaoCategorias'
-import { useBuscaViewModel, type FiltroBuscado } from './useBuscaViewModel'
+import { CartaoResultado } from './CartaoResultado'
+import { FotoOuInicial } from './FotoOuInicial'
+import { rolagemDaBusca } from './memoriaDaBusca'
+import { useBuscaViewModel } from './useBuscaViewModel'
 
 interface BuscaPageProps {
   /** Só para os testes: repositório falso. */
@@ -14,204 +17,309 @@ interface BuscaPageProps {
   categoriasRepositorio?: FonteCategorias
 }
 
-/** Mensagem de quando a busca não acha nada, conforme o que foi buscado. */
-function nadaEncontrado({ texto, categoria }: FiltroBuscado): string {
-  if (categoria && texto) return `Nada encontrado para “${texto}” em ${categoria.nome}.`
-  if (categoria) return `Nenhum item em ${categoria.nome} por enquanto.`
-  return `Nada encontrado para “${texto}”.`
+/** Ícone de traço, 24x24, só decorativo. */
+function Icone({ d, className = 'h-5 w-5' }: { d: string; className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={`shrink-0 ${className}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d={d} />
+    </svg>
+  )
 }
 
-interface NavegacaoProps {
-  caminho: Categoria[]
-  subcategorias: Categoria[]
-  desabilitado: boolean
-  aoEscolher: (id: number | null) => void
+const LUPA = 'M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16Zm10 18-4.3-4.3'
+const SETA_DIAGONAL = 'M7 17 17 7M7 7h10v10'
+const CHECK = 'm5 12 5 5L20 7'
+
+interface AbasProps {
+  abas: Categoria[]
+  atual: Categoria | null
+  aoTrocar: (id: number) => void
 }
 
 /**
- * Navegação pela árvore de categorias (US12): a trilha de onde a pessoa está
- * ("Todas › Alimentação › Doces") e as categorias de baixo. Cada nível já mostra os itens dele.
+ * Abas Alimentação / Outros produtos (padrão de abas do ARIA): as setas trocam de aba
+ * e só a aba escolhida entra no Tab, para o teclado não passar por todas.
  */
-function NavegacaoCategorias({ caminho, subcategorias, desabilitado, aoEscolher }: NavegacaoProps) {
-  const atual = caminho.at(-1)
-  const botao =
-    'rounded-full border border-gray-300 px-3 py-1 text-sm text-gray-800 hover:border-green-600 hover:text-green-700 disabled:opacity-60'
+function AbasDaBusca({ abas, atual, aoTrocar }: AbasProps) {
+  const botoes = useRef<(HTMLButtonElement | null)[]>([])
+
+  function teclar(evento: KeyboardEvent, indice: number) {
+    const passo = { ArrowRight: 1, ArrowLeft: -1 }[evento.key]
+    if (!passo) return
+    evento.preventDefault()
+    const proximo = (indice + passo + abas.length) % abas.length
+    botoes.current[proximo]?.focus()
+    aoTrocar(abas[proximo].id)
+  }
 
   return (
-    <nav aria-label="Categorias" className="mt-4 flex flex-col gap-2">
-      {atual && (
-        <ol className="flex flex-wrap items-center gap-1 text-sm">
-          <li>
-            <button
-              type="button"
-              disabled={desabilitado}
-              onClick={() => aoEscolher(null)}
-              className="text-green-700 underline-offset-2 hover:underline disabled:opacity-60"
-            >
-              Todas
-            </button>
-          </li>
-          {caminho.map((c) => (
-            <li key={c.id} className="flex items-center gap-1">
-              <span aria-hidden="true" className="text-gray-400">
-                ›
-              </span>
-              {c === atual ? (
-                <span aria-current="page" className="font-semibold text-gray-900">
-                  {c.nome}
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  disabled={desabilitado}
-                  onClick={() => aoEscolher(c.id)}
-                  className="text-green-700 underline-offset-2 hover:underline disabled:opacity-60"
-                >
-                  {c.nome}
-                </button>
-              )}
-            </li>
-          ))}
-        </ol>
-      )}
-      {subcategorias.length > 0 && (
-        <ul
-          aria-label={atual ? `Categorias dentro de ${atual.nome}` : 'Categorias'}
-          className="flex flex-wrap gap-2"
-        >
-          {subcategorias.map((c) => (
-            <li key={c.id}>
+    <div
+      role="tablist"
+      aria-label="Tipo de produto"
+      className="mt-6 flex gap-8 border-b border-linha"
+    >
+      {abas.map((aba, indice) => {
+        const escolhida = aba.id === atual?.id
+        return (
+          <button
+            key={aba.id}
+            ref={(el) => {
+              botoes.current[indice] = el
+            }}
+            type="button"
+            role="tab"
+            id={`aba-${aba.id}`}
+            aria-selected={escolhida}
+            aria-controls="painel-da-busca"
+            tabIndex={escolhida ? 0 : -1}
+            onClick={() => aoTrocar(aba.id)}
+            onKeyDown={(e) => teclar(e, indice)}
+            className={`-mb-px border-b-[3px] pb-3 text-[15px] font-semibold focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-marca-600 ${
+              escolhida
+                ? 'border-marca-600 text-marca-600'
+                : 'border-transparent text-tinta-suave hover:text-tinta'
+            }`}
+          >
+            {aba.nome}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+interface AtalhosProps {
+  atalhos: Atalho[]
+  escolhido: Categoria | null
+  aoEscolher: (id: number) => void
+}
+
+/** Os tipos de produto à venda, em blocos com foto. Escolher um filtra a lista; de novo, tira o filtro. */
+function AtalhosDaBusca({ atalhos, escolhido, aoEscolher }: AtalhosProps) {
+  return (
+    <section aria-labelledby="titulo-atalhos" className="mt-8">
+      <div className="flex items-baseline justify-between gap-3">
+        <h3 id="titulo-atalhos" className="text-xl font-bold tracking-tight text-tinta">
+          Para descobrir no campus
+        </h3>
+        <span className="hidden text-sm text-tinta-suave sm:inline">
+          {atalhos.length === 1 ? '1 opção' : `${atalhos.length} opções`}
+        </span>
+      </div>
+      <ul className="mt-4 grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4">
+        {atalhos.map(({ categoria, fotoUrl }) => {
+          const ativo = categoria.id === escolhido?.id
+          return (
+            <li key={categoria.id}>
               <button
                 type="button"
-                disabled={desabilitado}
-                onClick={() => aoEscolher(c.id)}
-                className={botao}
+                aria-pressed={ativo}
+                onClick={() => aoEscolher(categoria.id)}
+                className={`flex w-full flex-col overflow-hidden rounded-2xl border bg-cartao text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marca-600 ${
+                  ativo
+                    ? 'border-marca-600 ring-2 ring-marca-600'
+                    : 'border-linha hover:border-borda'
+                }`}
               >
-                {c.nome}
+                <FotoOuInicial
+                  url={fotoUrl}
+                  nome={categoria.nome}
+                  className="aspect-[232/202] w-full"
+                />
+                <span className="flex items-center justify-between gap-2 px-3 py-3.5 sm:px-4">
+                  <span className="truncate text-[15px] font-semibold text-tinta">
+                    {categoria.nome}
+                  </span>
+                  <span className="text-marca-600">
+                    <Icone d={ativo ? CHECK : SETA_DIAGONAL} className="h-4 w-4" />
+                  </span>
+                </span>
               </button>
             </li>
-          ))}
-        </ul>
-      )}
-    </nav>
+          )
+        })}
+      </ul>
+    </section>
   )
 }
 
-/**
- * Um resultado: o item, o preço e o vendedor, com link para o perfil dele.
- * Esgotado aparece riscado e com a marca "Esgotado" em texto, para o leitor de tela também saber (RN09).
- */
-function LinhaResultado({ resultado }: { resultado: ResultadoBusca }) {
-  const { item } = resultado
-  return (
-    <li className="flex flex-col gap-1 rounded-lg border border-gray-200 p-3">
-      <div className="flex items-start justify-between gap-3">
-        <span
-          className={`break-words font-semibold ${item.disponivel ? 'text-gray-900' : 'text-gray-500 line-through'}`}
-        >
-          {item.nome}
-        </span>
-        <span className="flex shrink-0 items-center gap-2">
-          {!item.disponivel && (
-            <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
-              Esgotado
-            </span>
-          )}
-          <span className="text-gray-700">{formatarPreco(item.preco)}</span>
-        </span>
-      </div>
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <Link
-          to={rotaPerfilVendedor(item.vendedorId)}
-          className="font-medium text-green-700 underline-offset-2 hover:underline"
-        >
-          {resultado.vendedorNome}
-        </Link>
-        {resultado.noCampusAgora && (
-          <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-800">
-            No campus agora
-          </span>
-        )}
-      </div>
-    </li>
-  )
+/** Guarda até onde a pessoa rolou e, ao voltar com a lista na memória, rola para lá de novo. */
+function useRolagemDaBusca(temLista: boolean) {
+  const voltando = useRef(temLista)
+
+  useLayoutEffect(() => {
+    if (voltando.current) window.scrollTo?.({ top: rolagemDaBusca.y })
+  }, [])
+
+  useEffect(() => {
+    const guardar = () => {
+      rolagemDaBusca.y = window.scrollY
+    }
+    window.addEventListener('scroll', guardar, { passive: true })
+    return () => window.removeEventListener('scroll', guardar)
+  }, [])
 }
 
 /**
- * Tela de busca: procura por nome de produto ou de vendedor, sem ligar para maiúsculas e acentos (US11),
- * e navega pelas categorias, vendo os itens de cada nível (US12).
+ * Tela de busca (US11, US12, visual da US21): campo de busca, abas por tipo de produto,
+ * atalhos com foto dos tipos à venda e a lista dos itens, disponíveis primeiro (RN09).
+ * Maiúsculas e acentos não importam na busca, mas a tela não precisa dizer isso.
  */
 export function BuscaPage({ repositorio, categoriasRepositorio }: BuscaPageProps) {
   const vm = useBuscaViewModel({ repositorio, categoriasRepositorio })
+  useRolagemDaBusca(vm.disponiveis.length + vm.esgotados.length > 0)
 
   async function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
     await vm.buscar()
   }
 
-  return (
-    <section className="mx-auto w-full max-w-md p-4">
-      <h2 className="text-xl font-bold text-gray-900">Buscar</h2>
-      <p className="mt-1 text-sm text-gray-600">
-        Procure um produto ou um vendedor, ou escolha uma categoria. Não precisa acertar acento nem
-        maiúscula.
-      </p>
+  const aba = vm.abaAtual?.nome ?? ''
+  const onde = vm.atalhoAtual?.nome ?? aba
+  const vazio = vm.carregou && vm.disponiveis.length === 0 && vm.esgotados.length === 0
+  const tituloLista = vm.buscado
+    ? `Resultados para “${vm.buscado}”`
+    : vm.atalhoAtual
+      ? vm.atalhoAtual.nome
+      : 'Disponíveis agora'
 
-      <form role="search" onSubmit={enviar} className="mt-4 flex gap-2">
+  return (
+    <section className="w-full max-w-[976px] pt-1">
+      <h2 className="sr-only">Buscar</h2>
+
+      <form role="search" onSubmit={enviar}>
         <label htmlFor="busca" className="sr-only">
-          {vm.categoriaAtual
-            ? `Produto ou vendedor em ${vm.categoriaAtual.nome}`
-            : 'Produto ou vendedor'}
+          Busque um produto ou vendedor
         </label>
-        <input
-          id="busca"
-          type="search"
-          value={vm.texto}
-          onChange={(e) => vm.alterarTexto(e.target.value)}
-          placeholder="brownie, café, Doces da Ana…"
-          className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-600/30"
-        />
-        <button
-          type="submit"
-          disabled={vm.buscando}
-          className="shrink-0 rounded-lg bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700 disabled:opacity-60"
-        >
-          {vm.buscando ? 'Buscando…' : 'Buscar'}
-        </button>
+        <div className="relative">
+          <span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-marca-600">
+            <Icone d={LUPA} />
+          </span>
+          <input
+            id="busca"
+            type="search"
+            enterKeyHint="search"
+            autoComplete="off"
+            value={vm.texto}
+            onChange={(e) => vm.alterarTexto(e.target.value)}
+            placeholder="Busque um produto ou vendedor"
+            className="h-[54px] w-full rounded-xl border border-[#e2e8e2] bg-campo pr-4 pl-12 text-base text-tinta placeholder:text-[#6d7c72] focus:border-marca-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-marca-600/30"
+          />
+        </div>
       </form>
 
-      {vm.erroCategorias ? (
-        <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">
+      {vm.erroCategorias && (
+        <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-800">
           {vm.erroCategorias}
         </p>
-      ) : (
-        <NavegacaoCategorias
-          caminho={vm.caminho}
-          subcategorias={vm.subcategorias}
-          desabilitado={vm.buscando}
-          aoEscolher={(id) => void vm.escolherCategoria(id)}
-        />
       )}
 
-      {vm.erro && (
-        <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">
-          {vm.erro}
-        </p>
+      {vm.abas.length > 0 && (
+        <AbasDaBusca abas={vm.abas} atual={vm.abaAtual} aoTrocar={(id) => void vm.trocarAba(id)} />
       )}
 
-      {vm.buscado && !vm.erro && vm.resultados.length === 0 && (
-        <p role="status" className="mt-4 text-gray-700">
-          {nadaEncontrado(vm.buscado)}
-        </p>
-      )}
+      <div
+        id="painel-da-busca"
+        role="tabpanel"
+        aria-labelledby={vm.abaAtual ? `aba-${vm.abaAtual.id}` : undefined}
+        aria-busy={vm.carregando}
+      >
+        {vm.erro && (
+          <p role="alert" className="mt-6 rounded-xl bg-red-50 p-3 text-sm text-red-800">
+            {vm.erro}
+          </p>
+        )}
 
-      {vm.resultados.length > 0 && (
-        <ul aria-label="Resultados da busca" className="mt-4 flex flex-col gap-3">
-          {vm.resultados.map((r) => (
-            <LinhaResultado key={r.item.id} resultado={r} />
-          ))}
-        </ul>
-      )}
+        {vm.atalhos.length > 0 && (
+          <AtalhosDaBusca
+            atalhos={vm.atalhos}
+            escolhido={vm.atalhoAtual}
+            aoEscolher={vm.escolherAtalho}
+          />
+        )}
+
+        {vm.carregando && !vm.carregou && (
+          <p role="status" className="mt-8 text-tinta-suave">
+            Carregando…
+          </p>
+        )}
+
+        {vazio && !vm.erro && (
+          <p role="status" className="mt-8 text-tinta-suave">
+            {vm.buscado
+              ? `Nada encontrado para “${vm.buscado}” em ${onde}.`
+              : `Ainda não tem nada à venda em ${onde}.`}
+          </p>
+        )}
+
+        {vm.disponiveis.length > 0 && (
+          <section aria-labelledby="titulo-disponiveis" className="mt-10">
+            <div className="flex items-baseline justify-between gap-3">
+              <h3 id="titulo-disponiveis" className="text-xl font-bold tracking-tight text-tinta">
+                {tituloLista}
+              </h3>
+              {vm.atalhoAtual && (
+                <button
+                  type="button"
+                  onClick={() => vm.atalhoAtual && vm.escolherAtalho(vm.atalhoAtual.id)}
+                  className="shrink-0 rounded-sm text-sm font-semibold text-marca-600 underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marca-600"
+                >
+                  Ver todos
+                </button>
+              )}
+            </div>
+            <ul
+              aria-label="Itens disponíveis"
+              className="mt-2 grid grid-cols-1 lg:grid-cols-2 lg:gap-x-7"
+            >
+              {vm.disponiveis.map((r) => (
+                <li key={r.item.id}>
+                  <Link
+                    to={rotaItem(r.item.id)}
+                    state={{ daBusca: true, resultado: r }}
+                    className="block rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marca-600"
+                  >
+                    <CartaoResultado resultado={r} />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {vm.esgotados.length > 0 && (
+          <section aria-labelledby="titulo-esgotados" className="mt-10">
+            <h3 id="titulo-esgotados" className="text-lg font-bold tracking-tight text-tinta">
+              Esgotados
+            </h3>
+            <ul
+              aria-label="Itens esgotados"
+              className="mt-2 grid grid-cols-1 lg:grid-cols-2 lg:gap-x-7"
+            >
+              {vm.esgotados.map((r) => (
+                <li key={r.item.id}>
+                  <Link
+                    to={rotaItem(r.item.id)}
+                    state={{ daBusca: true, resultado: r }}
+                    className="block rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marca-600"
+                  >
+                    <CartaoResultado resultado={r} />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
     </section>
   )
 }

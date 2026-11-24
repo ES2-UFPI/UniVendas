@@ -14,6 +14,8 @@ export interface ResultadoBusca {
   vendedorNome: string
   /** O vendedor tem presença com sinal nos últimos 30 minutos (RN16). */
   noCampusAgora: boolean
+  /** Onde achar o vendedor ("Perto da Biblioteca Central"), só enquanto ele está no mapa (RN18). */
+  referencia: string | null
 }
 
 /** Sem categoria, menos letras que isso devolveria quase tudo; a busca fica vazia. */
@@ -21,9 +23,12 @@ export const MINIMO_LETRAS_BUSCA = 2
 
 /**
  * Padrão Repository: a tela de busca depende desta interface, não do Supabase.
- * `buscar` filtra pelo texto e, se houver, pela categoria e suas filhas.
+ * `buscar` filtra pelo texto e, se houver, pela categoria e suas filhas; `detalhar` lê um item só.
  * Devolve os disponíveis primeiro e os esgotados depois (RN09). Lança `Falha` se não conseguir.
  */
 export interface BuscaRepository {
   buscar(filtro: FiltroBusca): Promise<ResultadoBusca[]>
+
+  /** Um item no mesmo formato da busca, para a tela de detalhe. `null` se ele não existe mais. */
+  detalhar(itemId: string): Promise<ResultadoBusca | null>
 }

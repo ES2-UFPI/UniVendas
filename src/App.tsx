@@ -1,3 +1,4 @@
+import { useLayoutEffect } from 'react'
 import {
   BrowserRouter,
   Link,
@@ -14,7 +15,9 @@ import { ROTAS } from './core/routes'
 import { useSessaoStore } from './core/sessaoStore'
 import { CadastroPage } from './features/auth/presentation/CadastroPage'
 import type { FonteCategorias } from './features/busca/domain/navegacaoCategorias'
+import type { BuscaRepository, ResultadoBusca } from './features/busca/domain/BuscaRepository'
 import { BuscaPage } from './features/busca/presentation/BuscaPage'
+import { ItemDetalhePage } from './features/busca/presentation/ItemDetalhePage'
 import { EsqueciSenhaPage } from './features/auth/presentation/EsqueciSenhaPage'
 import { LoginPage } from './features/auth/presentation/LoginPage'
 import { NovaSenhaPage } from './features/auth/presentation/NovaSenhaPage'
@@ -200,6 +203,35 @@ function Conversa({ repositorio }: { repositorio?: ChatRepository }) {
   return <ConversaPage conversaId={id} perfilId={usuario?.id ?? null} repositorio={repositorio} />
 }
 
+/** O que a busca manda ao abrir um item: o item já lido e a marca de que veio de lá. */
+interface EstadoDaBusca {
+  daBusca?: boolean
+  resultado?: ResultadoBusca
+}
+
+/** Detalhe de um item (US21): o id vem do endereço `/item/:id`. */
+function ItemDetalhe({ repositorio }: { repositorio?: BuscaRepository }) {
+  const { id = '' } = useParams()
+  const navegar = useNavigate()
+  const estado = (useLocation().state ?? {}) as EstadoDaBusca
+
+  // A busca pode estar rolada lá embaixo; o detalhe abre do topo.
+  useLayoutEffect(() => {
+    window.scrollTo?.({ top: 0 })
+  }, [id])
+
+  return (
+    <ItemDetalhePage
+      itemId={id}
+      inicial={estado.resultado}
+      repositorio={repositorio}
+      // Veio da busca: volta no histórico. Abriu o link direto: não há para onde voltar, abre a busca.
+      // Nos dois casos a busca reabre como estava, pela memória da busca.
+      aoVoltar={() => (estado.daBusca ? navegar(-1) : navegar(ROTAS.busca))}
+    />
+  )
+}
+
 function MeusItens() {
   const usuario = useSessaoStore((s) => s.usuario)
   return <MeusItensPage perfilId={usuario?.id ?? null} />
@@ -233,6 +265,8 @@ interface AppRotasProps {
   chatRepositorio?: ChatRepository
   /** Só para os testes: árvore de categorias falsa, para a busca não ler o Supabase. */
   categoriasRepositorio?: FonteCategorias
+  /** Só para os testes: busca falsa, para a busca e o detalhe do item não lerem o Supabase. */
+  buscaRepositorio?: BuscaRepository
 }
 
 /** As rotas do app, sem o roteador (os testes usam um `MemoryRouter` em volta). */
@@ -241,6 +275,7 @@ export function AppRotas({
   vendedorRepositorio,
   chatRepositorio,
   categoriasRepositorio,
+  buscaRepositorio,
 }: AppRotasProps = {}) {
   return (
     <Routes>
@@ -266,8 +301,14 @@ export function AppRotas({
           <Route path={ROTAS.meusItens} element={<MeusItens />} />
           <Route
             path={ROTAS.busca}
-            element={<BuscaPage categoriasRepositorio={categoriasRepositorio} />}
+            element={
+              <BuscaPage
+                repositorio={buscaRepositorio}
+                categoriasRepositorio={categoriasRepositorio}
+              />
+            }
           />
+          <Route path={ROTAS.item} element={<ItemDetalhe repositorio={buscaRepositorio} />} />
           <Route path={ROTAS.conversas} element={<Conversas repositorio={chatRepositorio} />} />
           <Route path={ROTAS.conversa} element={<Conversa repositorio={chatRepositorio} />} />
         </Route>

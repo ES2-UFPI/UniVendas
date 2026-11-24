@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, matchPath, useLocation, useNavigate } from 'react-router-dom'
 import { BotaoSair } from '../features/auth/presentation/BotaoSair'
+import { limparMemoriaDaBusca } from '../features/busca/presentation/memoriaDaBusca'
 import { Logo } from './Logo'
 import { guardarModo, lerModo, modoAtual, type Modo } from './modoDeUso'
 import { ROTAS } from './routes'
@@ -51,6 +52,8 @@ interface Aba {
   exata?: boolean
   /** No computador, aparece como botão de contorno (o "Quero vender" do Paper). */
   destaque?: boolean
+  /** Outras telas que acendem esta aba (o detalhe de um item é parte da busca). */
+  tambemEm?: string[]
   icone: ReactNode
 }
 
@@ -71,6 +74,7 @@ const TODAS_AS_ABAS: Aba[] = [
     para: ROTAS.busca,
     id: 'busca',
     rotulo: 'Buscar',
+    tambemEm: [ROTAS.item],
     icone: (
       <>
         <circle cx="11" cy="11" r="6" />
@@ -255,6 +259,12 @@ export function Layout() {
   const modo = modoAtual(ehVendedor, escolhido)
   const segundaLinha = modo === 'vendedor'
 
+  function aoSair() {
+    // A próxima pessoa no mesmo aparelho não herda a busca de quem saiu.
+    limparMemoriaDaBusca()
+    navegar(ROTAS.login, { replace: true })
+  }
+
   function trocarModo(novo: Modo) {
     if (!usuario || novo === modo) return
     guardarModo(usuario.id, novo)
@@ -279,13 +289,7 @@ export function Layout() {
               <SeletorDeModo modo={modo} aoTrocar={trocarModo} />
             </div>
           )}
-          {usuario && (
-            <MenuDaConta
-              nome={usuario.nome}
-              email={usuario.email}
-              aoSair={() => navegar(ROTAS.login, { replace: true })}
-            />
-          )}
+          {usuario && <MenuDaConta nome={usuario.nome} email={usuario.email} aoSair={aoSair} />}
         </div>
       </header>
 
@@ -311,7 +315,14 @@ export function Layout() {
             key={aba.para}
             to={aba.para}
             end={aba.exata}
-            className={(estado) => estiloAba(estado, aba.destaque)}
+            className={({ isActive }) =>
+              estiloAba(
+                {
+                  isActive: isActive || !!aba.tambemEm?.some((rota) => matchPath(rota, pathname)),
+                },
+                aba.destaque,
+              )
+            }
           >
             <Icone>{aba.icone}</Icone>
             <span className="max-w-full truncate">{aba.rotulo}</span>
