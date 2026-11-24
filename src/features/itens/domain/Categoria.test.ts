@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { agruparFolhas, type Categoria } from './Categoria'
+import { agruparFolhas, raizDe, raizes, type Categoria } from './Categoria'
 
 const categorias: Categoria[] = [
   { id: 1, nome: 'Alimentação', categoriaPaiId: null, folha: false },
@@ -29,5 +29,23 @@ describe('agruparFolhas', () => {
 
   it('devolve lista vazia sem categorias', () => {
     expect(agruparFolhas([])).toEqual([])
+  })
+})
+
+describe('raizes e raizDe (tipo de produto)', () => {
+  it('lista as raízes da árvore em ordem alfabética', () => {
+    expect(raizes(categorias).map((c) => c.nome)).toEqual(['Alimentação', 'Outros produtos'])
+  })
+
+  it('acha a raiz de uma folha, de uma categoria do meio e da própria raiz', () => {
+    expect(raizDe(7, categorias)?.nome).toBe('Alimentação')
+    expect(raizDe(4, categorias)?.nome).toBe('Alimentação')
+    expect(raizDe(20, categorias)?.nome).toBe('Outros produtos')
+    expect(raizDe(2, categorias)?.nome).toBe('Outros produtos')
+  })
+
+  it('não acha nada sem categoria ou com um id que não existe', () => {
+    expect(raizDe(null, categorias)).toBeUndefined()
+    expect(raizDe(99, categorias)).toBeUndefined()
   })
 })
