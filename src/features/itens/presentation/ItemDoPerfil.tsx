@@ -1,25 +1,32 @@
+import { CartaoItem } from '../../../core/ui/CartaoItem'
+import { Selo } from '../../../core/ui/Selo'
 import type { Item } from '../domain/Item'
-import { formatarPreco } from '../domain/validacoesItem'
 
 /**
- * Uma linha de item no perfil do vendedor (US09). Se o item está esgotado (`disponivel` falso),
- * o nome aparece riscado e com a marca "Esgotado" (RN09). A marca é texto, e não só o risco,
- * para quem usa leitor de tela também saber o estado.
+ * Um item na vitrine do perfil do vendedor (US09, visual da US21): foto em cima, selo, nome e preço.
+ * Se o item está esgotado (`disponivel` falso), o nome aparece riscado e com a marca "Esgotado"
+ * (RN09). A marca é texto, e não só o risco, para quem usa leitor de tela também saber o estado.
+ * Disponível com o vendedor no campus vira "Disponível agora", como na busca.
  */
-export function ItemDoPerfil({ item }: { item: Item }) {
+export function ItemDoPerfil({ item, ativoAgora = false }: { item: Item; ativoAgora?: boolean }) {
+  const selo = !item.disponivel ? (
+    <Selo tom="perigo" className="text-[13px]">
+      Esgotado
+    </Selo>
+  ) : ativoAgora ? (
+    <Selo className="text-[13px]">Disponível agora</Selo>
+  ) : undefined
+
   return (
-    <li className="flex items-center justify-between gap-3 py-2">
-      <span className={item.disponivel ? 'text-gray-900' : 'text-gray-500 line-through'}>
-        {item.nome}
-      </span>
-      <span className="flex shrink-0 items-center gap-2">
-        {!item.disponivel && (
-          <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
-            Esgotado
-          </span>
-        )}
-        <span className="text-gray-700">{formatarPreco(item.preco)}</span>
-      </span>
+    <li>
+      <CartaoItem
+        nome={item.nome}
+        preco={item.preco}
+        fotoUrl={item.fotoUrl}
+        selo={selo}
+        esgotado={!item.disponivel}
+        formato="coluna"
+      />
     </li>
   )
 }

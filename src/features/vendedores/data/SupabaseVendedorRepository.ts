@@ -16,7 +16,8 @@ const BUCKET_FOTOS = 'fotos'
  * O vendedor, os contatos, os itens e a presença, numa consulta só. Os contatos ocultos nem chegam
  * aqui para os outros usuários: o RLS só os entrega ao dono (RN24).
  */
-const COLUNAS_PERFIL = '*, contatos(canal, valor, visivel), itens(*), presenca(ultimo_sinal_em)'
+const COLUNAS_PERFIL =
+  '*, contatos(canal, valor, visivel), itens(*), presenca(ultimo_sinal_em, referencia)'
 
 const CANAIS: readonly string[] = ['whatsapp', 'telefone'] satisfies CanalTipo[]
 
@@ -79,6 +80,8 @@ export class SupabaseVendedorRepository implements VendedorRepository {
         .map((c) => new Contato(c.canal as CanalTipo, c.valor, c.visivel)),
       itens.map(paraItem),
       ativoAgora,
+      // A referência só vale enquanto ele está no campus (RN18).
+      ativoAgora ? (presenca?.referencia ?? null) : null,
     )
   }
 

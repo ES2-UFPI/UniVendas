@@ -12,8 +12,16 @@ export class PerfilVendedor {
   /** Disponíveis primeiro e esgotados depois, cada grupo em ordem alfabética (RN09). */
   readonly itens: Item[]
   readonly ativoAgora: boolean
+  /** Onde achar o vendedor agora, ex.: "Perto da Biblioteca" (RN18); só quando está no campus. */
+  readonly referencia: string | null
 
-  constructor(vendedor: Vendedor, contatos: Contato[], itens: Item[], ativoAgora: boolean) {
+  constructor(
+    vendedor: Vendedor,
+    contatos: Contato[],
+    itens: Item[],
+    ativoAgora: boolean,
+    referencia: string | null = null,
+  ) {
     this.vendedor = vendedor
     this.contatos = contatos
     this.itens = [...itens].sort(
@@ -21,5 +29,6 @@ export class PerfilVendedor {
         Number(b.disponivel) - Number(a.disponivel) || a.nome.localeCompare(b.nome, 'pt-BR'),
     )
     this.ativoAgora = ativoAgora
+    this.referencia = referencia
   }
 }

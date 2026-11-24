@@ -1,4 +1,4 @@
-import { estiloBotao } from '../../../core/ui/estiloBotao'
+import { estiloBotao, type VarianteBotao } from '../../../core/ui/estiloBotao'
 import { Icone } from '../../../core/ui/Icone'
 import type { ChatRepository } from '../domain/ChatRepository'
 import { useBotaoChatViewModel } from './useBotaoChatViewModel'
@@ -9,6 +9,8 @@ interface BotaoChatProps {
   className?: string
   /** Botão mais baixo, para o balão do mapa. */
   compacto?: boolean
+  /** No perfil o Chat é a ação principal; no balão do mapa, a secundária. */
+  variante?: VarianteBotao
   /** Só para os testes: repositório falso. */
   repositorio?: ChatRepository
 }
@@ -21,6 +23,7 @@ export function BotaoChat({
   vendedorId,
   className = '',
   compacto = false,
+  variante = 'secundario',
   repositorio,
 }: BotaoChatProps) {
   const vm = useBotaoChatViewModel({ vendedorId, repositorio })
@@ -31,7 +34,7 @@ export function BotaoChat({
         type="button"
         onClick={() => void vm.abrir()}
         disabled={vm.abrindo}
-        className={estiloBotao('secundario', compacto ? 'h-10 w-full px-4 text-sm' : 'w-full')}
+        className={estiloBotao(variante, compacto ? 'h-10 w-full px-4 text-sm' : 'w-full')}
       >
         <Icone nome="chat" className="h-[18px] w-[18px]" />
         {vm.abrindo ? 'Abrindo…' : 'Chat'}
