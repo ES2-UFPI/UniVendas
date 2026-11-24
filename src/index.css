@@ -34,3 +34,18 @@
   --radius-controle: 12px; /* botões e campos */
   --radius-cartao: 20px;
 }
+
+/*
+ * O mapa (Leaflet) no tema: a fonte do app e o balão do vendedor com cantos de cartão.
+ * Seletores mais fortes que os do leaflet.css, que carrega depois deste arquivo.
+ */
+div.leaflet-container {
+  font-family: var(--font-sans);
+}
+.leaflet-popup .leaflet-popup-content-wrapper {
+  border-radius: var(--radius-cartao);
+  box-shadow: 0 12px 32px rgb(25 44 34 / 0.16);
+}
+.leaflet-popup .leaflet-popup-content {
+  margin: 16px;
+}

@@ -5,7 +5,7 @@ import type { Categoria } from '../../itens/domain/Categoria'
 import { Item } from '../../itens/domain/Item'
 import type { BuscaRepository, ResultadoBusca } from '../domain/BuscaRepository'
 import { BuscaPage } from './BuscaPage'
-import { limparMemoriaDaBusca } from './memoriaDaBusca'
+import { limparMemoriaDaBusca, prepararBusca } from './memoriaDaBusca'
 
 beforeEach(limparMemoriaDaBusca)
 afterEach(cleanup)
@@ -171,6 +171,15 @@ describe('BuscaPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Resultados para “BROWNIE”' })).toBeVisible()
     expect(buscar).toHaveBeenLastCalledWith({ texto: 'BROWNIE', categoriaId: 1 })
+  })
+
+  it('vindo do campo do mapa, abre já buscando o texto (US21)', async () => {
+    prepararBusca('brownie')
+    const { buscar } = abrir()
+
+    expect(await screen.findByRole('heading', { name: 'Resultados para “brownie”' })).toBeVisible()
+    expect(screen.getByRole('searchbox')).toHaveValue('brownie')
+    expect(buscar).toHaveBeenLastCalledWith({ texto: 'brownie', categoriaId: 1 })
   })
 
   it('avisa quando a busca não acha nada', async () => {

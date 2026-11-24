@@ -84,6 +84,7 @@ describe('MapaPage: balão do marcador (US06)', () => {
 
     expect(await screen.findByText('em frente ao RU')).toBeInTheDocument()
     expect(screen.getByText('Brownies da Ana', { selector: 'p' })).toBeInTheDocument()
+    expect(screen.getByText('No campus agora')).toBeInTheDocument()
   })
 
   it('mostra só o nome quando o vendedor não informou referência', async () => {

@@ -1,24 +1,70 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it } from 'vitest'
+import { limparMemoriaDaBusca, useMemoriaDaBusca } from '../../busca/presentation/memoriaDaBusca'
 import type { VendedorNaLista } from './ListaNoCampus'
 import { VisaoDoCampus } from './VisaoDoCampus'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  limparMemoriaDaBusca()
+})
 
 const vendedores: VendedorNaLista[] = [
   { id: 'v1', nome: 'Brownies da Ana', referencia: null, ultimoSinalEm: new Date() },
 ]
 
-function abrir(carregando = false) {
+function abrir(carregando = false, lista = vendedores) {
   render(
     <MemoryRouter>
-      <VisaoDoCampus marcadores={[]} vendedores={vendedores} carregando={carregando} />
+      <Routes>
+        <Route
+          path="/"
+          element={<VisaoDoCampus marcadores={[]} vendedores={lista} carregando={carregando} />}
+        />
+        <Route path="/busca" element={<p>tela de busca</p>} />
+      </Routes>
     </MemoryRouter>,
   )
 }
 
 describe('VisaoDoCampus (US06, US13)', () => {
+  it('tem o título da tela, o campus e quantos vendedores estão no campus agora (US21)', () => {
+    abrir(false, [...vendedores, { ...vendedores[0], id: 'v2', nome: 'Café do Leo' }])
+
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Encontre quem está por perto' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('UFPI · Campus Ministro Petrônio Portella')).toBeInTheDocument()
+    expect(screen.getByText('2 vendedores no campus agora')).toBeInTheDocument()
+  })
+
+  it('carregando, ainda não conta ninguém', () => {
+    abrir(true)
+    expect(screen.queryByText(/no campus agora$/)).not.toBeInTheDocument()
+  })
+
+  it('buscar no campo do mapa abre a tela de busca já buscando o texto', () => {
+    abrir()
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Busque um produto ou vendedor' }), {
+      target: { value: 'brownie ' },
+    })
+    fireEvent.submit(screen.getByRole('search'))
+
+    expect(screen.getByText('tela de busca')).toBeInTheDocument()
+    expect(useMemoriaDaBusca.getState()).toMatchObject({ texto: 'brownie ', buscado: 'brownie' })
+  })
+
+  it('texto curto demais só fica escrito no campo da busca, sem buscar', () => {
+    abrir()
+
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'b' } })
+    fireEvent.submit(screen.getByRole('search'))
+
+    expect(useMemoriaDaBusca.getState()).toMatchObject({ texto: 'b', buscado: null })
+  })
+
   it('abre no mapa, com o botão "Mapa" marcado', () => {
     abrir()
 

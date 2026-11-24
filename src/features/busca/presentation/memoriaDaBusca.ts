@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { Categoria } from '../../itens/domain/Categoria'
-import type { ResultadoBusca } from '../domain/BuscaRepository'
+import { MINIMO_LETRAS_BUSCA, type ResultadoBusca } from '../domain/BuscaRepository'
 
 /** O que a tela de busca guarda para "Voltar à busca" reabrir do mesmo jeito. */
 export interface MemoriaDaBusca {
@@ -48,5 +48,19 @@ export function chaveDaLista(abaId: number, buscado: string | null): string {
 /** Esquece tudo (nos testes, e para a próxima pessoa que entrar no mesmo aparelho). */
 export function limparMemoriaDaBusca(): void {
   useMemoriaDaBusca.setState({ ...inicial }, true)
+  rolagemDaBusca.y = 0
+}
+
+/**
+ * Prepara a busca de um texto vindo de outra tela (o campo do mapa): a tela de busca abre já
+ * buscando esse texto, na aba de antes. Texto curto demais só fica escrito no campo.
+ */
+export function prepararBusca(texto: string): void {
+  const limpo = texto.trim()
+  useMemoriaDaBusca.setState({
+    texto,
+    buscado: limpo.length >= MINIMO_LETRAS_BUSCA ? limpo : null,
+    atalhoId: null,
+  })
   rolagemDaBusca.y = 0
 }

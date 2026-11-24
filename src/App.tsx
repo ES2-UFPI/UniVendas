@@ -245,14 +245,12 @@ function Mapa({ presencaRepositorio }: { presencaRepositorio?: PresencaRepositor
     perfilId: usuario?.id ?? null,
   })
   return (
-    <>
-      {erro && (
-        <p role="alert" className="mb-2 w-full rounded-lg bg-red-50 p-3 text-sm text-red-800">
-          {erro}
-        </p>
-      )}
-      <VisaoDoCampus marcadores={marcadores} vendedores={vendedores} carregando={carregando} />
-    </>
+    <VisaoDoCampus
+      marcadores={marcadores}
+      vendedores={vendedores}
+      carregando={carregando}
+      erro={erro}
+    />
   )
 }
 
