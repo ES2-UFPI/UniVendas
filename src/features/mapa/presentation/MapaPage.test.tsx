@@ -84,6 +84,7 @@ describe('MapaPage: balão do marcador (US06)', () => {
 
     expect(await screen.findByText('em frente ao RU')).toBeInTheDocument()
     expect(screen.getByText('Brownies da Ana', { selector: 'p' })).toBeInTheDocument()
+    expect(screen.getByText('No campus agora')).toBeInTheDocument()
   })
 
   it('mostra só o nome quando o vendedor não informou referência', async () => {
@@ -180,5 +181,34 @@ describe('MapaPage: link para o perfil (US10)', () => {
       'href',
       '/vendedor/v2',
     )
+  })
+})
+
+describe('MapaPage: botão "Chat" no balão (US18)', () => {
+  it('mostra "Chat" no balão de outro vendedor, mesmo sem contatos', async () => {
+    render(
+      <MapaPage
+        marcadores={[{ id: 'v1', latitude: -5.0577, longitude: -42.7955, nome: 'Brownies da Ana' }]}
+      />,
+    )
+
+    fireEvent.click(screen.getByTitle('Brownies da Ana'))
+
+    expect(await screen.findByRole('button', { name: 'Chat' })).toBeInTheDocument()
+  })
+
+  it('não mostra "Chat" no balão do próprio usuário (RN22)', async () => {
+    render(
+      <MapaPage
+        marcadores={[
+          { id: 'v9', latitude: -5.0577, longitude: -42.7955, nome: 'Minha banca', meu: true },
+        ]}
+      />,
+    )
+
+    fireEvent.click(screen.getByTitle('Minha banca'))
+
+    expect(await screen.findByRole('link', { name: 'Ver perfil' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Chat' })).not.toBeInTheDocument()
   })
 })

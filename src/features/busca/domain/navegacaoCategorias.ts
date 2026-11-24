@@ -1,0 +1,12 @@
+import type { Categoria } from '../../itens/domain/Categoria'
+import type { ItemRepository } from '../../itens/domain/ItemRepository'
+
+/** De onde a busca lê a árvore de categorias: só precisa listar, então serve o repositório de itens. */
+export type FonteCategorias = Pick<ItemRepository, 'listarCategorias'>
+
+const ordem = (a: Categoria, b: Categoria) => a.nome.localeCompare(b.nome, 'pt-BR')
+
+/** As categorias logo abaixo de `paiId`, em ordem alfabética. Com `null`, as da raiz (ex.: Alimentação). */
+export function filhasDe(categorias: Categoria[], paiId: number | null): Categoria[] {
+  return categorias.filter((c) => c.categoriaPaiId === paiId).sort(ordem)
+}

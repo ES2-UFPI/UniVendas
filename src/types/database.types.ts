@@ -43,22 +43,61 @@ export type Database = {
           id: string
           valor: string
           vendedor_id: string
+          visivel: boolean
         }
         Insert: {
           canal: string
           id?: string
           valor: string
           vendedor_id: string
+          visivel?: boolean
         }
         Update: {
           canal?: string
           id?: string
           valor?: string
           vendedor_id?: string
+          visivel?: boolean
         }
         Relationships: [
           {
             foreignKeyName: 'contatos_vendedor_id_fkey'
+            columns: ['vendedor_id']
+            isOneToOne: false
+            referencedRelation: 'vendedores'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      conversas: {
+        Row: {
+          consumidor_id: string
+          criada_em: string
+          id: string
+          vendedor_id: string
+        }
+        Insert: {
+          consumidor_id: string
+          criada_em?: string
+          id?: string
+          vendedor_id: string
+        }
+        Update: {
+          consumidor_id?: string
+          criada_em?: string
+          id?: string
+          vendedor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'conversas_consumidor_id_fkey'
+            columns: ['consumidor_id']
+            isOneToOne: false
+            referencedRelation: 'perfis'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'conversas_vendedor_id_fkey'
             columns: ['vendedor_id']
             isOneToOne: false
             referencedRelation: 'vendedores'
@@ -113,6 +152,45 @@ export type Database = {
             columns: ['vendedor_id']
             isOneToOne: false
             referencedRelation: 'vendedores'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      mensagens: {
+        Row: {
+          autor_id: string
+          conversa_id: string
+          enviada_em: string
+          id: string
+          texto: string
+        }
+        Insert: {
+          autor_id: string
+          conversa_id: string
+          enviada_em?: string
+          id?: string
+          texto: string
+        }
+        Update: {
+          autor_id?: string
+          conversa_id?: string
+          enviada_em?: string
+          id?: string
+          texto?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'mensagens_autor_id_fkey'
+            columns: ['autor_id']
+            isOneToOne: false
+            referencedRelation: 'perfis'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'mensagens_conversa_id_fkey'
+            columns: ['conversa_id']
+            isOneToOne: false
+            referencedRelation: 'conversas'
             referencedColumns: ['id']
           },
         ]
@@ -225,12 +303,30 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      buscar_itens: {
+        Args: { categoria?: number; item?: string; texto?: string }
+        Returns: {
+          categoria_id: number
+          descricao: string
+          disponivel: boolean
+          foto_url: string
+          id: string
+          no_campus_agora: boolean
+          nome: string
+          preco: number
+          referencia: string
+          vendedor_id: string
+          vendedor_nome: string
+        }[]
+      }
       desligar_presenca: { Args: never; Returns: undefined }
       desligar_presencas_sem_sinal: { Args: never; Returns: number }
+      excluir_conta: { Args: never; Returns: undefined }
       no_perimetro_do_campus: {
         Args: { lat: number; lng: number }
         Returns: boolean
       }
+      participa_da_conversa: { Args: { p_conversa_id: string }; Returns: boolean }
       registrar_presenca: {
         Args: {
           lat_ponto?: number

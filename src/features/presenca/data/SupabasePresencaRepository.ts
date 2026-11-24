@@ -33,17 +33,22 @@ function paraFalha(erro: { code?: string }, mensagemPadrao = MENSAGEM_PADRAO): F
   return new Falha(mensagemPadrao, erro.code ?? 'desconhecido')
 }
 
-/** Colunas de `presenca`, o nome e os contatos do vendedor, que o balão do marcador mostra. */
+/**
+ * Colunas de `presenca`, o nome, o dono e os contatos do vendedor, que o balão do marcador usa.
+ * Os contatos ocultos só chegam para o próprio dono (RLS, RN24).
+ */
 const COLUNAS =
-  'vendedor_id, latitude, longitude, ponto_escolhido, referencia, ultimo_sinal_em, vendedores(nome_exibicao, contatos(canal, valor))'
+  'vendedor_id, latitude, longitude, ponto_escolhido, referencia, ultimo_sinal_em, vendedores(nome_exibicao, perfil_id, contatos(canal, valor, visivel))'
 
 const CANAIS: readonly string[] = ['whatsapp', 'telefone'] satisfies CanalTipo[]
 
 /** Converte as linhas de `contatos` em entidades, ignorando canal que o app ainda não conhece. */
-function paraContatos(linhas: { canal: string; valor: string }[] | undefined): Contato[] {
+function paraContatos(
+  linhas: { canal: string; valor: string; visivel?: boolean }[] | undefined,
+): Contato[] {
   return (linhas ?? [])
     .filter((c) => CANAIS.includes(c.canal))
-    .map((c) => new Contato(c.canal as CanalTipo, c.valor))
+    .map((c) => new Contato(c.canal as CanalTipo, c.valor, c.visivel ?? true))
 }
 
 const COLUNAS_DO_DONO =
@@ -56,7 +61,11 @@ interface LinhaPresenca {
   ponto_escolhido: boolean
   referencia: string | null
   ultimo_sinal_em: string
-  vendedores: { nome_exibicao: string; contatos?: { canal: string; valor: string }[] } | null
+  vendedores: {
+    nome_exibicao: string
+    perfil_id?: string
+    contatos?: { canal: string; valor: string; visivel?: boolean }[]
+  } | null
 }
 
 function paraPresenca(linha: LinhaPresenca): Presenca {
@@ -68,6 +77,7 @@ function paraPresenca(linha: LinhaPresenca): Presenca {
     linha.referencia,
     new Date(linha.ultimo_sinal_em),
     paraContatos(linha.vendedores?.contatos),
+    linha.vendedores?.perfil_id ?? null,
   )
 }
 

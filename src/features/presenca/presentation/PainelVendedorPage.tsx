@@ -1,4 +1,17 @@
+import { Link } from 'react-router-dom'
 import type { LocalizacaoService } from '../../../core/localizacaoService'
+import { ROTAS } from '../../../core/routes'
+import { useSessaoStore } from '../../../core/sessaoStore'
+import { Avatar } from '../../../core/ui/Avatar'
+import { Aviso } from '../../../core/ui/Aviso'
+import { Botao } from '../../../core/ui/Botao'
+import { CampoFormulario, estiloEntrada } from '../../../core/ui/CampoFormulario'
+import { Icone } from '../../../core/ui/Icone'
+import { Interruptor } from '../../../core/ui/Interruptor'
+import { Selo } from '../../../core/ui/Selo'
+import { TituloTela } from '../../../core/ui/TituloTela'
+import type { VendedorRepository } from '../../vendedores/domain/VendedorRepository'
+import { useVendedorDoUsuario } from '../../vendedores/presentation/useVendedorDoUsuario'
 import type { PresencaRepository } from '../domain/PresencaRepository'
 import { EscolherPontoNoMapa } from './EscolherPontoNoMapa'
 import { LIMITE_REFERENCIA, usePainelVendedorViewModel } from './usePainelVendedorViewModel'
@@ -8,91 +21,153 @@ interface PainelVendedorPageProps {
   repositorio?: PresencaRepository
   /** Só para os testes: localização falsa. */
   localizacao?: Pick<LocalizacaoService, 'posicaoAtual' | 'acompanhar'>
+  /** Só para os testes: de onde vêm o nome e a foto do negócio. */
+  vendedores?: VendedorRepository
 }
 
-/** Painel do vendedor (US04, US05): o botão "Estou no campus", a referência e o ponto fixo opcionais. */
-export function PainelVendedorPage({ repositorio, localizacao }: PainelVendedorPageProps) {
+/**
+ * Painel do vendedor (US04, US05; visual da US21): o cartão do negócio com o interruptor
+ * "Estou no campus", a referência e o ponto fixo opcionais no mapa, e o atalho para os itens.
+ * No celular fica tudo em uma coluna; no computador, o mapa vai para a direita.
+ */
+export function PainelVendedorPage({
+  repositorio,
+  localizacao,
+  vendedores,
+}: PainelVendedorPageProps) {
   const vm = usePainelVendedorViewModel({ repositorio, localizacao })
+  const usuario = useSessaoStore((s) => s.usuario)
+  const vendedor = useVendedorDoUsuario(usuario?.id ?? null, vendedores)
+  const nome = vendedor?.nomeExibicao ?? usuario?.nome ?? 'Seu negócio'
+  const bloqueado = vm.carregando || vm.ativo
+
+  const situacao = vm.carregando
+    ? vm.ativo
+      ? 'Desligando…'
+      : 'Ligando…'
+    : vm.ativo
+      ? 'Você aparece no mapa agora.'
+      : 'Ative para aparecer no mapa.'
 
   return (
-    <section className="mx-auto w-full max-w-md p-4">
-      <h2 className="text-xl font-bold text-gray-900">Painel do vendedor</h2>
-      <p className="mt-1 text-sm text-gray-600">
-        Ligue o botão quando estiver no campus para aparecer no mapa para os estudantes.
-      </p>
+    <section className="flex w-full flex-col gap-8">
+      <TituloTela
+        titulo="Seu ponto de venda no campus"
+        apoio="Gerencie sua presença e ajude os compradores a encontrar você."
+      />
 
-      <div className="mt-4 flex flex-col gap-1">
-        <label htmlFor="referencia" className="text-sm font-medium text-gray-800">
-          Referência (opcional)
-        </label>
-        <input
-          id="referencia"
-          maxLength={LIMITE_REFERENCIA}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-600/30 disabled:opacity-60"
-          value={vm.referencia}
-          onChange={(e) => vm.alterarReferencia(e.target.value)}
-          disabled={vm.carregando || vm.ativo}
-          placeholder="em frente ao RU"
-        />
-        <p className="text-xs text-gray-500">
-          {vm.referencia.length}/{LIMITE_REFERENCIA}
-        </p>
+      <div className="flex w-full max-w-[600px] flex-wrap items-center justify-between gap-x-6 gap-y-5 rounded-cartao border border-linha bg-cartao p-5 md:p-6">
+        <div className="flex min-w-0 items-center gap-4">
+          <Avatar nome={nome} fotoUrl={vendedor?.fotoUrl ?? null} className="h-16 w-16 text-2xl" />
+          <div className="flex min-w-0 flex-col gap-1">
+            <p className="font-titulo text-xl leading-tight tracking-[-0.035em] break-words text-tinta md:text-2xl">
+              {nome}
+            </p>
+            {vm.ativo ? (
+              <Selo tom="ativo">No campus agora</Selo>
+            ) : (
+              <Selo tom="neutro">Fora do mapa</Selo>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-0.5">
+            <p className="font-bold text-tinta" aria-hidden="true">
+              Estou no campus
+            </p>
+            <p id="situacao-presenca" className="text-sm text-tinta-suave">
+              {situacao}
+            </p>
+          </div>
+          <Interruptor
+            ligado={vm.ativo}
+            aoMudar={(ligar) => void (ligar ? vm.ligar() : vm.desligar())}
+            rotulo="Estou no campus"
+            desabilitado={vm.carregando}
+            descritoPor="situacao-presenca"
+          />
+        </div>
       </div>
 
-      <div className="mt-4 flex flex-col gap-1">
-        <p className="text-sm font-medium text-gray-800">Ponto no mapa (opcional)</p>
-        <p className="text-xs text-gray-500">
-          {vm.ponto
-            ? 'Seu marcador vai ficar no ponto escolhido, dentro do campus.'
-            : 'Toque no mapa para fixar onde seu marcador aparece. Sem ponto, o mapa mostra onde você está.'}
-        </p>
-        <EscolherPontoNoMapa
-          ponto={vm.ponto}
-          aoEscolher={vm.escolherPonto}
-          bloqueado={vm.carregando || vm.ativo}
-        />
-        {vm.ponto && !vm.ativo && (
-          <button
-            type="button"
-            onClick={() => vm.escolherPonto(null)}
-            disabled={vm.carregando}
-            className="self-start text-sm font-medium text-green-700 underline disabled:opacity-60"
+      <div className="grid w-full gap-8 lg:grid-cols-[minmax(0,440px)_minmax(0,1fr)] lg:gap-x-11">
+        <div className="lg:col-start-1 lg:row-start-1">
+          <CampoFormulario
+            id="referencia"
+            rotulo="Referência"
+            opcional
+            ajuda={`Uma indicação curta para quem está chegando (${vm.referencia.length}/${LIMITE_REFERENCIA}).`}
           >
-            Usar minha posição real
-          </button>
-        )}
+            <input
+              id="referencia"
+              maxLength={LIMITE_REFERENCIA}
+              className={estiloEntrada}
+              value={vm.referencia}
+              onChange={(e) => vm.alterarReferencia(e.target.value)}
+              disabled={bloqueado}
+              aria-describedby="referencia-ajuda"
+              placeholder="Perto da Biblioteca Central"
+            />
+          </CampoFormulario>
+        </div>
+
+        <div className="flex flex-col gap-3 lg:col-start-2 lg:row-span-3 lg:row-start-1">
+          <div className="flex flex-col gap-1">
+            <h3 className="font-titulo text-xl tracking-[-0.035em] text-tinta">Ponto no mapa</h3>
+            <p className="text-sm text-tinta-suave">
+              Toque no mapa para definir onde seu marcador aparece. Sem ponto, o mapa mostra onde
+              você está.
+            </p>
+          </div>
+          <EscolherPontoNoMapa
+            ponto={vm.ponto}
+            aoEscolher={vm.escolherPonto}
+            bloqueado={bloqueado}
+          />
+          {vm.ponto && !vm.ativo && (
+            <Botao
+              variante="texto"
+              icone="localizacao"
+              onClick={() => vm.escolherPonto(null)}
+              disabled={vm.carregando}
+              className="self-start"
+            >
+              Usar minha posição real
+            </Botao>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-3 lg:col-start-1 lg:row-start-2">
+          {vm.erro && <Aviso tipo="erro">{vm.erro}</Aviso>}
+          {vm.ativo ? (
+            <Aviso tipo="sucesso">Você está visível no mapa.</Aviso>
+          ) : (
+            !vm.erro && (
+              <Aviso tipo="info">
+                {vm.ponto
+                  ? 'Seu marcador vai ficar no ponto escolhido, dentro do campus.'
+                  : 'Escolha um ponto no mapa ou use sua localização ao ativar a presença.'}
+              </Aviso>
+            )
+          )}
+        </div>
+
+        <div className="lg:col-start-1 lg:row-start-3">
+          <Link
+            to={ROTAS.meusItens}
+            className="flex max-w-[340px] items-center gap-4 rounded-cartao border border-linha bg-white p-5 hover:border-marca-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marca-600"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-controle bg-marca-50 text-marca-600">
+              <Icone nome="sacola" />
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="font-bold text-tinta">Seus itens</span>
+              <span className="text-sm text-tinta-suave">Revise preços e disponibilidade.</span>
+            </span>
+            <Icone nome="avancar" className="h-5 w-5 text-marca-600" />
+          </Link>
+        </div>
       </div>
-
-      {vm.erro && (
-        <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">
-          {vm.erro}
-        </p>
-      )}
-      {vm.ativo && (
-        <p role="status" className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-800">
-          Você está visível no mapa.
-        </p>
-      )}
-
-      <button
-        type="button"
-        onClick={() => void vm.ligar()}
-        disabled={vm.carregando || vm.ativo}
-        aria-pressed={vm.ativo}
-        className="mt-4 w-full rounded-lg bg-green-600 px-4 py-3 font-semibold text-white hover:bg-green-700 disabled:opacity-60"
-      >
-        {vm.carregando && !vm.ativo ? 'Ligando…' : 'Estou no campus'}
-      </button>
-      {vm.ativo && (
-        <button
-          type="button"
-          onClick={() => void vm.desligar()}
-          disabled={vm.carregando}
-          className="mt-2 w-full rounded-lg border border-red-600 px-4 py-3 font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
-        >
-          {vm.carregando ? 'Desligando…' : 'Desligar'}
-        </button>
-      )}
     </section>
   )
 }

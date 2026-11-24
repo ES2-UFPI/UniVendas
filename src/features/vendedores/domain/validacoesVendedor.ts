@@ -23,6 +23,21 @@ export function normalizarTelefone(texto: string): string {
   return digitos
 }
 
+/**
+ * Mostra o telefone guardado (55 + DDD + número) do jeito que a pessoa digita.
+ * Ex.: "5586999998888" vira "(86) 99999-8888" e "558632151234" vira "(86) 3215-1234".
+ * Se o valor não tem o formato esperado, devolve como veio.
+ */
+export function formatarTelefone(valor: string): string {
+  const resto = valor.replace(/\D/g, '')
+  if (!FORMATO_TELEFONE.test(resto)) return valor
+  const local = resto.slice(2)
+  const ddd = local.slice(0, 2)
+  const numero = local.slice(2)
+  const separador = numero.length - 4
+  return `(${ddd}) ${numero.slice(0, separador)}-${numero.slice(separador)}`
+}
+
 export function telefoneValido(texto: string): boolean {
   return FORMATO_TELEFONE.test(normalizarTelefone(texto))
 }

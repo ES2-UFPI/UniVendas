@@ -1,14 +1,19 @@
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png'
-import iconUrl from 'leaflet/dist/images/marker-icon.png'
-import shadowUrl from 'leaflet/dist/images/marker-shadow.png'
 import { useEffect, useState } from 'react'
 import { CircleMarker, MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
 import { Link } from 'react-router-dom'
 import { Falha } from '../../../core/falha'
 import { LocalizacaoService, type LatLng } from '../../../core/localizacaoService'
 import { rotaPerfilVendedor } from '../../../core/routes'
+import { Avatar } from '../../../core/ui/Avatar'
+import { Aviso } from '../../../core/ui/Aviso'
+import { estiloBotao } from '../../../core/ui/estiloBotao'
+import { Icone } from '../../../core/ui/Icone'
+import { ICONES } from '../../../core/ui/icones'
+import { Selo } from '../../../core/ui/Selo'
+import { BotaoChat } from '../../chat/presentation/BotaoChat'
+import type { ChatRepository } from '../../chat/domain/ChatRepository'
 import type { CanalTipo } from '../../vendedores/domain/Contato'
 import { CENTRO_DO_CAMPUS, ZOOM_INICIAL } from '../domain/campus'
 
@@ -27,6 +32,8 @@ export interface Marcador {
   referencia?: string | null
   /** Botões de contato, com o link já montado pelo `ContatoService`. Sem contato, sem botão. */
   contatos?: BotaoContato[]
+  /** `true` quando o marcador é do próprio usuário: o balão não mostra "Chat" (RN22). */
+  meu?: boolean
 }
 
 export interface BotaoContato {
@@ -37,13 +44,13 @@ export interface BotaoContato {
   link: string
 }
 
-// No Vite os ícones padrão do Leaflet quebram; apontamos para as imagens importadas.
-const icone = L.icon({
-  iconUrl,
-  iconRetinaUrl,
-  shadowUrl,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
+// O pino verde do tema (US21), desenhado em SVG: não depende das imagens do Leaflet.
+const icone = L.divIcon({
+  className: '',
+  html: `<svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true"><path d="${ICONES.pino}" fill="#15803d" stroke="#ffffff" stroke-width="1.4" fill-rule="evenodd"/></svg>`,
+  iconSize: [34, 34],
+  iconAnchor: [17, 33],
+  popupAnchor: [0, -30],
 })
 
 // O "center" do MapContainer só vale na criação; para mover depois, usamos o objeto do mapa.
@@ -58,11 +65,17 @@ function Recentralizar({ ponto }: { ponto: LatLng | null }) {
 interface MapaPageProps {
   marcadores?: Marcador[]
   localizacao?: Pick<LocalizacaoService, 'posicaoAtual'>
+  /** Só para os testes: repositório do chat falso. */
+  chatRepositorio?: ChatRepository
 }
 
 const servicoPadrao = new LocalizacaoService()
 
-export function MapaPage({ marcadores = [], localizacao = servicoPadrao }: MapaPageProps) {
+export function MapaPage({
+  marcadores = [],
+  localizacao = servicoPadrao,
+  chatRepositorio,
+}: MapaPageProps) {
   const [minhaPosicao, setMinhaPosicao] = useState<LatLng | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [localizando, setLocalizando] = useState(false)
@@ -80,65 +93,99 @@ export function MapaPage({ marcadores = [], localizacao = servicoPadrao }: MapaP
   }
 
   return (
-    <section aria-label="Mapa do campus" className="flex w-full flex-1 flex-col gap-2">
-      <button
-        type="button"
-        onClick={centralizarEmMim}
-        disabled={localizando}
-        className="self-end rounded-lg bg-green-600 px-4 py-2 font-medium text-white disabled:opacity-60"
-      >
-        {localizando ? 'Localizando…' : 'Minha localização'}
-      </button>
-      {erro && (
-        <p role="alert" className="text-sm text-red-700">
-          {erro}
-        </p>
-      )}
-      {/* O contêiner do Leaflet precisa de altura, senão o mapa fica invisível. */}
-      <MapContainer center={CENTRO_DO_CAMPUS} zoom={ZOOM_INICIAL} className="h-[70vh] w-full">
-        <TileLayer
-          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        />
-        {marcadores.map((m) => (
-          <Marker key={m.id} position={[m.latitude, m.longitude]} icon={icone} title={m.nome}>
-            <Popup>
-              <p className="!m-0 font-semibold text-gray-900">{m.nome}</p>
-              {m.referencia && <p className="!m-0 mt-1 text-sm text-gray-600">{m.referencia}</p>}
-              {m.contatos && m.contatos.length > 0 && (
-                <div className="mt-2 flex gap-2">
-                  {m.contatos.map((c) => (
-                    // O WhatsApp abre em outra aba; o tel: abre o discador do celular.
-                    <a
-                      key={c.canal}
-                      href={c.link}
-                      {...(c.canal === 'whatsapp'
-                        ? { target: '_blank', rel: 'noopener noreferrer' }
-                        : {})}
-                      className={`rounded-lg px-3 py-1 text-sm font-medium !text-white ${
-                        c.canal === 'whatsapp' ? 'bg-green-600' : 'bg-blue-600'
-                      }`}
+    <section aria-label="Mapa do campus" className="flex w-full flex-1 flex-col gap-3">
+      {erro && <Aviso tipo="erro">{erro}</Aviso>}
+      <div className="relative overflow-hidden rounded-cartao border border-linha">
+        {/* O contêiner do Leaflet precisa de altura, senão o mapa fica invisível. */}
+        <MapContainer
+          center={CENTRO_DO_CAMPUS}
+          zoom={ZOOM_INICIAL}
+          className="h-[62vh] min-h-[360px] w-full md:h-[560px]"
+        >
+          <TileLayer
+            url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          />
+          {marcadores.map((m) => (
+            <Marker key={m.id} position={[m.latitude, m.longitude]} icon={icone} title={m.nome}>
+              <Popup>
+                <div className="flex w-[232px] max-w-full flex-col gap-3 font-sans">
+                  <div className="flex items-center gap-3">
+                    <Avatar nome={m.nome} fotoUrl={null} className="h-11 w-11 text-base" />
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <p className="!m-0 font-titulo text-lg leading-6 tracking-[-0.035em] break-words text-tinta">
+                        {m.nome}
+                      </p>
+                      <Selo className="text-[13px]">No campus agora</Selo>
+                    </div>
+                  </div>
+                  {m.referencia && (
+                    <p className="!m-0 text-sm break-words text-tinta-suave">{m.referencia}</p>
+                  )}
+                  <div className="flex gap-2">
+                    {/* Link do roteador: abre o perfil sem recarregar a página. O id do marcador é o do vendedor. */}
+                    <Link
+                      to={rotaPerfilVendedor(m.id)}
+                      className={estiloBotao('primario', 'h-10 flex-1 px-4 text-sm !text-white')}
                     >
-                      {c.rotulo}
-                    </a>
-                  ))}
+                      Ver perfil
+                    </Link>
+                    {/* "Chat" abre a conversa dentro do app (US18); não aparece no próprio marcador (RN22). */}
+                    {!m.meu && (
+                      <BotaoChat
+                        vendedorId={m.id}
+                        className="flex-1"
+                        compacto
+                        repositorio={chatRepositorio}
+                      />
+                    )}
+                  </div>
+                  {m.contatos && m.contatos.length > 0 && (
+                    <div className="flex gap-2">
+                      {m.contatos.map((c) => (
+                        // O WhatsApp abre em outra aba; o tel: abre o discador do celular.
+                        <a
+                          key={c.canal}
+                          href={c.link}
+                          {...(c.canal === 'whatsapp'
+                            ? { target: '_blank', rel: 'noopener noreferrer' }
+                            : {})}
+                          className={estiloBotao(
+                            'secundario',
+                            'h-10 flex-1 px-4 text-sm !text-marca-600',
+                          )}
+                        >
+                          <Icone nome="telefone" className="h-4 w-4" />
+                          {c.rotulo}
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-              {/* Link do roteador: abre o perfil sem recarregar a página. O id do marcador é o do vendedor. */}
-              <Link
-                to={rotaPerfilVendedor(m.id)}
-                className="mt-2 block text-sm font-medium !text-green-700 underline"
-              >
-                Ver perfil
-              </Link>
-            </Popup>
-          </Marker>
-        ))}
-        {minhaPosicao && (
-          <CircleMarker center={[minhaPosicao.latitude, minhaPosicao.longitude]} radius={10} />
-        )}
-        <Recentralizar ponto={minhaPosicao} />
-      </MapContainer>
+              </Popup>
+            </Marker>
+          ))}
+          {minhaPosicao && (
+            <CircleMarker
+              center={[minhaPosicao.latitude, minhaPosicao.longitude]}
+              radius={10}
+              pathOptions={{ color: '#1d4ed8' }}
+            />
+          )}
+          <Recentralizar ponto={minhaPosicao} />
+        </MapContainer>
+        {/* Por cima do mapa (z 1000 do Leaflet), mas por baixo das barras do app (z 1100). */}
+        <button
+          type="button"
+          onClick={centralizarEmMim}
+          disabled={localizando}
+          aria-label={localizando ? 'Localizando…' : 'Minha localização'}
+          title="Minha localização"
+          className="absolute top-3 right-3 z-[1000] flex h-11 w-11 items-center justify-center rounded-controle border border-linha bg-white text-marca-600 shadow-sm hover:border-marca-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marca-600 disabled:opacity-60"
+        >
+          <Icone nome="localizacao" />
+        </button>
+      </div>
     </section>
   )
 }

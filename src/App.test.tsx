@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App, { AppRotas } from './App'
@@ -8,7 +8,11 @@ import type { PresencaRepository } from './features/presenca/domain/PresencaRepo
 import { PerfilVendedor } from './features/vendedores/domain/PerfilVendedor'
 import { VendedorAmbulante } from './features/vendedores/domain/Vendedor'
 import type { VendedorRepository } from './features/vendedores/domain/VendedorRepository'
-import { rotaPerfilVendedor } from './core/routes'
+import { rotaConversa, rotaItem, rotaPerfilVendedor } from './core/routes'
+import type { BuscaRepository } from './features/busca/domain/BuscaRepository'
+import { Item } from './features/itens/domain/Item'
+import type { ChatRepository } from './features/chat/domain/ChatRepository'
+import { Conversa } from './features/chat/domain/Conversa'
 
 afterEach(() => {
   cleanup()
@@ -16,6 +20,7 @@ afterEach(() => {
 })
 
 const ana = new Usuario('u1', 'Ana', 'ana@ufpi.edu.br')
+const anaVendedora = new Usuario('u1', 'Ana', 'ana@ufpi.edu.br', false, 'v1')
 
 // Repositório de presença falso: o mapa não pode abrir canal no Supabase de verdade durante os testes.
 const presencaRepositorio = {
@@ -31,12 +36,39 @@ const presencaRepositorio = {
 const vendedorRepositorio = {
   criar: vi.fn(),
   buscarDoUsuario: vi.fn(),
+  atualizarPerfil: vi.fn(),
   buscarPerfil: vi.fn((id: string) =>
     Promise.resolve(
       new PerfilVendedor(new VendedorAmbulante(id, 'u2', 'Brownies da Ana'), [], [], false),
     ),
   ),
 } as VendedorRepository
+
+// Repositório do chat falso: a conversa não pode abrir canal no Supabase de verdade.
+const chatRepositorio = {
+  abrirConversa: vi.fn(),
+  buscarConversa: vi.fn((id: string) =>
+    Promise.resolve(new Conversa(id, 'u1', 'Ana', 'v1', 'u2', 'Café do Leo', new Date())),
+  ),
+  listarConversas: vi.fn().mockResolvedValue([]),
+  listarMensagens: vi.fn().mockResolvedValue([]),
+  enviar: vi.fn(),
+  observarMensagens: vi.fn(() => () => {}),
+} as ChatRepository
+
+// Árvore de categorias falsa: a busca não pode ler o Supabase de verdade.
+const categoriasRepositorio = { listarCategorias: vi.fn().mockResolvedValue([]) }
+
+// Busca falsa: o detalhe do item também não pode ler o Supabase de verdade.
+const buscaRepositorio = {
+  buscar: vi.fn().mockResolvedValue([]),
+  detalhar: vi.fn().mockResolvedValue({
+    item: new Item('i1', 'v1', 7, 'Brownie de chocolate', 6),
+    vendedorNome: 'Doces da Ana',
+    noCampusAgora: false,
+    referencia: null,
+  }),
+} as BuscaRepository
 
 /** Abre o app no endereço `url`, com a sessão já definida. */
 function abrir(url: string, usuario: Usuario | null) {
@@ -46,6 +78,9 @@ function abrir(url: string, usuario: Usuario | null) {
       <AppRotas
         presencaRepositorio={presencaRepositorio}
         vendedorRepositorio={vendedorRepositorio}
+        chatRepositorio={chatRepositorio}
+        categoriasRepositorio={categoriasRepositorio}
+        buscaRepositorio={buscaRepositorio}
       />
     </MemoryRouter>,
   )
@@ -78,11 +113,49 @@ describe('App', () => {
     expect(screen.getByRole('link', { name: 'Entrar' })).toHaveAttribute('href', '/login')
   })
 
-  it('mostra o mapa, o nome e o botão de sair para quem está logado', () => {
+  it('o login tem o link "Esqueceu a senha?", que leva à recuperação (US15)', () => {
+    abrir('/login', null)
+    expect(screen.getByRole('link', { name: 'Recuperar' })).toHaveAttribute(
+      'href',
+      '/esqueci-senha',
+    )
+    cleanup()
+
+    abrir('/esqueci-senha', null)
+    expect(screen.getByRole('heading', { name: 'Esqueci a senha' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Entrar' })).toHaveAttribute('href', '/login')
+  })
+
+  it('quem abre o link do e-mail, já com a sessão de recuperação, vê a tela "Nova senha" (US15)', () => {
+    abrir('/nova-senha', ana)
+    expect(screen.getByRole('heading', { name: 'Nova senha' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Nova senha')).toBeInTheDocument()
+  })
+
+  it('sem sessão, o link de "Nova senha" avisa que venceu e oferece pedir outro (US15)', () => {
+    abrir('/nova-senha', null)
+    expect(screen.getByRole('alert')).toHaveTextContent('Este link de recuperação expirou')
+    expect(screen.getByRole('link', { name: 'Peça um novo' })).toHaveAttribute(
+      'href',
+      '/esqueci-senha',
+    )
+  })
+
+  it('mostra o mapa e, no menu da conta, o nome e o botão de sair para quem está logado', () => {
     abrir('/', ana)
     expect(screen.getByLabelText('Mapa do campus')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Conta de Ana' }))
     expect(screen.getByText('Ana')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Sair' })).toBeInTheDocument()
+  })
+
+  it('o mapa tem a visão em lista de quem está no campus (US13)', async () => {
+    abrir('/', ana)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lista' }))
+
+    expect(await screen.findByText('Ninguém está no campus agora.')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Mapa do campus')).not.toBeInTheDocument()
   })
 
   it('quem já está logado e abre o login vai para o mapa', () => {
@@ -92,7 +165,7 @@ describe('App', () => {
 
   it('abre a tela "Quero vender" com a conta logada', () => {
     abrir('/quero-vender', ana)
-    expect(screen.getByRole('heading', { name: 'Quero vender' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Crie seu perfil de vendedor' })).toBeInTheDocument()
   })
 
   it('protege também o painel do vendedor', () => {
@@ -100,14 +173,16 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
   })
 
-  it('o menu leva ao painel do vendedor, com o botão "Estou no campus" (US04)', () => {
-    abrir('/', ana)
+  it('o menu leva ao painel do vendedor, com o interruptor "Estou no campus" (US04)', () => {
+    abrir('/', anaVendedora)
     expect(screen.getByRole('link', { name: 'Painel' })).toHaveAttribute('href', '/painel')
     cleanup()
 
     abrir('/painel', ana)
-    expect(screen.getByRole('heading', { name: 'Painel do vendedor' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Estou no campus' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Seu ponto de venda no campus' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'Estou no campus' })).toBeInTheDocument()
   })
 
   it('abre o perfil do vendedor pela rota /vendedor/:id (US10)', async () => {
@@ -124,18 +199,83 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
   })
 
+  it('a tela "Meu perfil" tem o "Excluir minha conta", com confirmação (US17)', () => {
+    abrir('/meu-perfil', ana)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Excluir minha conta' }))
+
+    expect(screen.getByRole('alertdialog', { name: 'Excluir minha conta?' })).toBeInTheDocument()
+  })
+
+  it('protege também a tela "Meu perfil"', () => {
+    abrir('/meu-perfil', null)
+    expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
+  })
+
+  it('o menu leva à tela "Meu perfil" (US14)', () => {
+    abrir('/', anaVendedora)
+    expect(screen.getByRole('link', { name: 'Meu perfil' })).toHaveAttribute('href', '/meu-perfil')
+    cleanup()
+
+    abrir('/meu-perfil', ana)
+    expect(screen.getByRole('heading', { name: 'Meu perfil' })).toBeInTheDocument()
+  })
+
   it('protege também a tela "Meus itens"', () => {
     abrir('/meus-itens', null)
     expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
   })
 
   it('o menu leva à tela "Meus itens" (US08)', () => {
-    abrir('/', ana)
+    abrir('/', anaVendedora)
     expect(screen.getByRole('link', { name: 'Meus itens' })).toHaveAttribute('href', '/meus-itens')
     cleanup()
 
     abrir('/meus-itens', ana)
     expect(screen.getByRole('heading', { name: 'Meus itens' })).toBeInTheDocument()
+  })
+
+  it('protege também a tela de busca', () => {
+    abrir('/busca', null)
+    expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
+  })
+
+  it('o menu leva à tela de busca (US11)', () => {
+    abrir('/', ana)
+    expect(screen.getByRole('link', { name: 'Buscar' })).toHaveAttribute('href', '/busca')
+    cleanup()
+
+    abrir('/busca', ana)
+    expect(screen.getByRole('heading', { level: 2, name: 'Buscar no campus' })).toBeInTheDocument()
+    expect(screen.getByRole('search')).toBeInTheDocument()
+  })
+
+  it('abre o detalhe de um item pelo endereço, e "Voltar à busca" leva à busca (US21)', async () => {
+    abrir(rotaItem('i1'), ana)
+    expect(await screen.findByRole('heading', { name: 'Brownie de chocolate' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Voltar à busca' }))
+
+    expect(screen.getByRole('search')).toBeInTheDocument()
+  })
+
+  it('abre a conversa pela rota /conversa/:id (US18)', async () => {
+    abrir(rotaConversa('c1'), ana)
+    expect(await screen.findByRole('heading', { name: 'Café do Leo' })).toBeInTheDocument()
+  })
+
+  it('o menu leva à tela "Conversas" (US18)', async () => {
+    abrir('/', ana)
+    expect(screen.getByRole('link', { name: 'Conversas' })).toHaveAttribute('href', '/conversas')
+    cleanup()
+
+    abrir('/conversas', ana)
+    expect(await screen.findByText(/Você ainda não tem conversas/)).toBeInTheDocument()
+  })
+
+  it('protege também a tela da conversa', () => {
+    abrir(rotaConversa('c1'), null)
+    expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
   })
 
   it('endereço desconhecido volta para o mapa', () => {

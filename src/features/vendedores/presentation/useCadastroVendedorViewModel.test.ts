@@ -118,7 +118,7 @@ describe('useCadastroVendedorViewModel: salvar', () => {
     const [vendedor, contatos, foto] = criar.mock.calls[0]
     expect(vendedor.perfilId).toBe('u1')
     expect(vendedor.nomeExibicao).toBe('Brownies da Ana')
-    expect(contatos).toEqual([{ canal: 'whatsapp', valor: '5586999998888' }])
+    expect(contatos).toEqual([{ canal: 'whatsapp', valor: '5586999998888', visivel: true }])
     expect(foto).toBe(comprimida)
     expect(result.current.vendedorSalvo).toBe(salvo)
     expect(result.current.salvando).toBe(false)
