@@ -52,7 +52,7 @@ interface Aba {
   exata?: boolean
   /** No computador, aparece como botão de contorno (o "Quero vender" do Paper). */
   destaque?: boolean
-  /** Outras telas que acendem esta aba (o detalhe de um item é parte da busca). */
+  /** Outras telas que acendem esta aba (o detalhe de um item é parte da busca, uma conversa é parte das conversas). */
   tambemEm?: string[]
   icone: ReactNode
 }
@@ -63,6 +63,7 @@ const TODAS_AS_ABAS: Aba[] = [
     id: 'mapa',
     rotulo: 'Mapa',
     exata: true,
+    tambemEm: [ROTAS.perfilVendedor],
     icone: (
       <>
         <path d="M12 21s-6-5.5-6-10a6 6 0 1 1 12 0c0 4.5-6 10-6 10Z" />
@@ -122,6 +123,7 @@ const TODAS_AS_ABAS: Aba[] = [
     para: ROTAS.conversas,
     id: 'conversas',
     rotulo: 'Conversas',
+    tambemEm: [ROTAS.conversa],
     icone: <path d="M4 5h16v11H9l-5 4V5Z" />,
   },
   {

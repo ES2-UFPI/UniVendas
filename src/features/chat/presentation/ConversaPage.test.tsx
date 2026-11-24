@@ -1,4 +1,6 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render as renderizar, screen, within } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ChatRepository } from '../domain/ChatRepository'
 import { Conversa } from '../domain/Conversa'
@@ -19,6 +21,9 @@ function repositorio(mensagens: Mensagem[] = [], enviar = vi.fn()) {
 }
 
 afterEach(cleanup)
+
+// O topo tem os links "Ver perfil" e "Voltar às conversas", então a tela precisa de um roteador.
+const render = (tela: ReactElement) => renderizar(<MemoryRouter>{tela}</MemoryRouter>)
 
 describe('ConversaPage (US18)', () => {
   it('mostra o nome do vendedor e as mensagens, com as de quem está logado marcadas', async () => {
@@ -59,5 +64,40 @@ describe('ConversaPage (US18)', () => {
     render(<ConversaPage conversaId="c1" perfilId="ana" repositorio={repositorio()} />)
 
     expect(await screen.findByLabelText('Mensagem')).toHaveAttribute('maxLength', '1000')
+  })
+
+  it('para o consumidor, o topo leva ao perfil do vendedor e há o caminho de volta à lista (US21)', async () => {
+    render(<ConversaPage conversaId="c1" perfilId="ana" repositorio={repositorio()} />)
+
+    expect(await screen.findByRole('link', { name: 'Ver perfil' })).toHaveAttribute(
+      'href',
+      '/vendedor/v1',
+    )
+    expect(screen.getByRole('link', { name: 'Voltar às conversas' })).toHaveAttribute(
+      'href',
+      '/conversas',
+    )
+    expect(screen.getByPlaceholderText('Escreva sua mensagem')).toBeInTheDocument()
+  })
+
+  it('para o vendedor, que fala com um consumidor, não há "Ver perfil"', async () => {
+    render(<ConversaPage conversaId="c1" perfilId="leo" repositorio={repositorio()} />)
+
+    expect(await screen.findByRole('heading', { name: 'Ana' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Ver perfil' })).not.toBeInTheDocument()
+  })
+
+  it('separa as mensagens por dia, com "Hoje" nas de hoje', async () => {
+    const msgs = [
+      new Mensagem('m1', 'c1', 'ana', 'De ontem', new Date(Date.now() - 86_400_000)),
+      new Mensagem('m2', 'c1', 'leo', 'De agora', new Date()),
+    ]
+    render(<ConversaPage conversaId="c1" perfilId="ana" repositorio={repositorio(msgs)} />)
+
+    const itens = within(await screen.findByRole('list', { name: 'Mensagens' })).getAllByRole(
+      'listitem',
+    )
+    expect(itens[0]).toHaveTextContent('Ontem')
+    expect(itens[1]).toHaveTextContent('Hoje')
   })
 })

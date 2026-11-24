@@ -139,6 +139,14 @@ export function useConversaViewModel({ conversaId, perfilId, repositorio }: Opco
     /** Nome de quem está do outro lado, para o topo da tela. */
     nomeDaOutraPessoa:
       atual?.conversa && perfilId ? atual.conversa.nomeDaOutraPessoa(perfilId) : null,
+    /**
+     * O vendedor da conversa, para o "Ver perfil" do topo. Só para o consumidor: quem é o vendedor
+     * fala com um consumidor, que não tem perfil público.
+     */
+    vendedorId:
+      atual?.conversa && perfilId && perfilId !== atual.conversa.vendedorPerfilId
+        ? atual.conversa.vendedorId
+        : null,
     mensagens: mensagensNaTela,
     texto,
     setTexto: (novo: string) => {

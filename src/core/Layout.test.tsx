@@ -100,6 +100,16 @@ describe('Layout (US20)', () => {
     expect(screen.getByRole('link', { name: 'Mapa' })).not.toHaveClass('text-marca-600')
   })
 
+  it('uma conversa acende a aba Conversas, e o perfil de um vendedor, a aba Mapa', () => {
+    abrir(consumidor, '/conversa/c1')
+    expect(screen.getByRole('link', { name: 'Conversas' })).toHaveClass('text-marca-600')
+    cleanup()
+
+    abrir(consumidor, '/vendedor/v1')
+    expect(screen.getByRole('link', { name: 'Mapa' })).toHaveClass('text-marca-600')
+    expect(screen.getByRole('link', { name: 'Conversas' })).not.toHaveClass('text-marca-600')
+  })
+
   it('mostra a tela dentro do layout', () => {
     abrir(consumidor, ROTAS.painel)
     expect(screen.getByText('conteúdo')).toBeInTheDocument()

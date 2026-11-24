@@ -196,11 +196,19 @@ function Conversas({ repositorio }: { repositorio?: ChatRepository }) {
   return <ConversasPage perfilId={usuario?.id ?? null} repositorio={repositorio} />
 }
 
-/** Tela da conversa (US18): o id vem do endereço `/conversa/:id`. */
+/**
+ * Tela da conversa (US18): o id vem do endereço `/conversa/:id`. No computador, a lista das
+ * conversas fica ao lado (US21); no celular, só a conversa.
+ */
 function Conversa({ repositorio }: { repositorio?: ChatRepository }) {
   const { id = '' } = useParams()
   const usuario = useSessaoStore((s) => s.usuario)
-  return <ConversaPage conversaId={id} perfilId={usuario?.id ?? null} repositorio={repositorio} />
+  const perfilId = usuario?.id ?? null
+  return (
+    <ConversasPage perfilId={perfilId} conversaAbertaId={id} repositorio={repositorio}>
+      <ConversaPage conversaId={id} perfilId={perfilId} repositorio={repositorio} />
+    </ConversasPage>
+  )
 }
 
 /** O que a busca manda ao abrir um item: o item já lido e a marca de que veio de lá. */
