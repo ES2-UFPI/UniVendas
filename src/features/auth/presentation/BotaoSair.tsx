@@ -1,3 +1,4 @@
+import { estiloBotao } from '../../../core/ui/estiloBotao'
 import type { AuthRepository } from '../domain/AuthRepository'
 import { useAuthViewModel } from './useAuthViewModel'
 
@@ -17,17 +18,17 @@ export function BotaoSair({ aoSair, repositorio }: BotaoSairProps) {
   }
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex flex-col gap-2">
       <button
         type="button"
         onClick={sair}
         disabled={vm.carregando}
-        className="rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-60"
+        className={estiloBotao('secundario', 'h-11 w-full')}
       >
         {vm.carregando ? 'Saindo…' : 'Sair'}
       </button>
       {vm.erro && (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-sm text-perigo">
           {vm.erro}
         </p>
       )}

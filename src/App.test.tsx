@@ -127,9 +127,10 @@ describe('App', () => {
     )
   })
 
-  it('mostra o mapa, o nome e o botão de sair para quem está logado', () => {
+  it('mostra o mapa e, no menu da conta, o nome e o botão de sair para quem está logado', () => {
     abrir('/', ana)
     expect(screen.getByLabelText('Mapa do campus')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Conta de Ana' }))
     expect(screen.getByText('Ana')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Sair' })).toBeInTheDocument()
   })
