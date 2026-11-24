@@ -1,12 +1,30 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { ComponentProps } from 'react'
+import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { useSessaoStore } from '../../../core/sessaoStore'
+import { Usuario } from '../../auth/domain/Usuario'
+import { VendedorAmbulante } from '../../vendedores/domain/Vendedor'
+import type { VendedorRepository } from '../../vendedores/domain/VendedorRepository'
 import { Falha } from '../../../core/falha'
 import type { LocalizacaoService } from '../../../core/localizacaoService'
 import { Presenca } from '../domain/Presenca'
 import { ResultadoRegistro, type PresencaRepository } from '../domain/PresencaRepository'
-import { PainelVendedorPage } from './PainelVendedorPage'
+import { PainelVendedorPage as Painel } from './PainelVendedorPage'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  useSessaoStore.setState({ usuario: null, carregando: true })
+})
+
+// O atalho "Seus itens" é um link, então o painel precisa de um roteador em volta.
+function PainelVendedorPage(props: ComponentProps<typeof Painel>) {
+  return (
+    <MemoryRouter>
+      <Painel {...props} />
+    </MemoryRouter>
+  )
+}
 
 const posicao = { latitude: -5.0577, longitude: -42.7955 }
 
@@ -33,16 +51,39 @@ function falsos(
   }
 }
 
-const botao = () => screen.getByRole('button', { name: 'Estou no campus' })
+const botao = () => screen.getByRole('switch', { name: 'Estou no campus' })
+const visivel = () => screen.queryByText('Você está visível no mapa.')
 
 describe('PainelVendedorPage', () => {
-  it('começa com o botão desligado e a referência vazia', () => {
+  it('começa com o interruptor desligado, a referência vazia e "Fora do mapa"', () => {
     render(<PainelVendedorPage {...falsos()} />)
 
-    expect(botao()).toHaveAttribute('aria-pressed', 'false')
+    expect(botao()).toHaveAttribute('aria-checked', 'false')
+    expect(botao()).toHaveAccessibleDescription('Ative para aparecer no mapa.')
+    expect(screen.getByText('Fora do mapa')).toBeInTheDocument()
     expect(screen.getByLabelText('Referência (opcional)')).toHaveValue('')
     expect(screen.getByLabelText('Referência (opcional)')).toHaveAttribute('maxlength', '80')
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Escolha um ponto no mapa')
+    expect(visivel()).not.toBeInTheDocument()
+  })
+
+  it('mostra o nome do negócio e o atalho para os itens', async () => {
+    useSessaoStore.setState({
+      usuario: new Usuario('u1', 'Ana', 'ana@ufpi.edu.br', false, 'v1'),
+      carregando: false,
+    })
+    const vendedores = {
+      buscarDoUsuario: vi.fn().mockResolvedValue(new VendedorAmbulante('v1', 'u1', 'Doces da Ana')),
+    } as unknown as VendedorRepository
+
+    render(<PainelVendedorPage {...falsos()} vendedores={vendedores} />)
+
+    expect(
+      screen.getByRole('heading', { name: 'Seu ponto de venda no campus' }),
+    ).toBeInTheDocument()
+    expect(await screen.findByText('Doces da Ana')).toBeInTheDocument()
+    expect(vendedores.buscarDoUsuario).toHaveBeenCalledWith('u1')
+    expect(screen.getByRole('link', { name: /Seus itens/ })).toHaveAttribute('href', '/meus-itens')
   })
 
   it('liga a presença com a referência e mostra que está visível no mapa', async () => {
@@ -56,18 +97,19 @@ describe('PainelVendedorPage', () => {
 
     expect(await screen.findByRole('status')).toHaveTextContent('Você está visível no mapa.')
     expect(registrar).toHaveBeenCalledWith(posicao, null, 'em frente ao RU')
-    expect(botao()).toHaveAttribute('aria-pressed', 'true')
-    expect(botao()).toBeDisabled()
+    expect(botao()).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByText('No campus agora')).toBeInTheDocument()
+    expect(screen.getByLabelText('Referência (opcional)')).toBeDisabled()
   })
 
-  it('mostra a mensagem e o botão volta a desligado quando está fora do campus', async () => {
+  it('mostra a mensagem e o interruptor volta a desligado quando está fora do campus', async () => {
     const registrar = vi.fn().mockResolvedValue(ResultadoRegistro.FORA_DO_CAMPUS)
     render(<PainelVendedorPage {...falsos(registrar)} />)
 
     fireEvent.click(botao())
 
     expect(await screen.findByRole('alert')).toHaveTextContent('fora do campus')
-    expect(botao()).toHaveAttribute('aria-pressed', 'false')
+    expect(botao()).toHaveAttribute('aria-checked', 'false')
     expect(botao()).toBeEnabled()
   })
 
@@ -83,32 +125,25 @@ describe('PainelVendedorPage', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Libere a localização')
     expect(registrar).not.toHaveBeenCalled()
-    expect(botao()).toHaveAttribute('aria-pressed', 'false')
+    expect(botao()).toHaveAttribute('aria-checked', 'false')
   })
 
-  it('só mostra o botão Desligar depois de ligar', async () => {
-    render(<PainelVendedorPage {...falsos()} />)
-    expect(screen.queryByRole('button', { name: 'Desligar' })).not.toBeInTheDocument()
-
-    fireEvent.click(botao())
-
-    expect(await screen.findByRole('button', { name: 'Desligar' })).toBeEnabled()
-  })
-
-  it('desliga e o painel volta ao estado inicial', async () => {
+  it('desliga ao tocar de novo no interruptor e o painel volta ao estado inicial', async () => {
     const { repositorio, localizacao, desligar } = falsos()
     render(<PainelVendedorPage repositorio={repositorio} localizacao={localizacao} />)
     fireEvent.change(screen.getByLabelText('Referência (opcional)'), {
       target: { value: 'em frente ao RU' },
     })
     fireEvent.click(botao())
-    fireEvent.click(await screen.findByRole('button', { name: 'Desligar' }))
+    await screen.findByText('Você está visível no mapa.')
 
-    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument())
+    fireEvent.click(botao())
+
+    await waitFor(() => expect(visivel()).not.toBeInTheDocument())
     expect(desligar).toHaveBeenCalledTimes(1)
-    expect(screen.queryByRole('button', { name: 'Desligar' })).not.toBeInTheDocument()
-    expect(botao()).toHaveAttribute('aria-pressed', 'false')
+    expect(botao()).toHaveAttribute('aria-checked', 'false')
     expect(botao()).toBeEnabled()
+    expect(screen.getByText('Fora do mapa')).toBeInTheDocument()
     expect(screen.getByLabelText('Referência (opcional)')).toHaveValue('')
   })
 
@@ -118,22 +153,24 @@ describe('PainelVendedorPage', () => {
       .mockRejectedValue(new Falha('Não foi possível desligar sua presença.', 'XX000'))
     render(<PainelVendedorPage {...falsos(undefined, undefined, desligar)} />)
     fireEvent.click(botao())
-    fireEvent.click(await screen.findByRole('button', { name: 'Desligar' }))
+    await screen.findByText('Você está visível no mapa.')
+
+    fireEvent.click(botao())
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível desligar')
-    expect(botao()).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'Desligar' })).toBeEnabled()
+    expect(botao()).toHaveAttribute('aria-checked', 'true')
+    expect(botao()).toBeEnabled()
   })
 
-  it('volta ao painel já ativo, com o botão Desligar, quando o vendedor está ativo no servidor', async () => {
+  it('volta ao painel já ativo quando o vendedor está ativo no servidor', async () => {
     const ativa = new Presenca('v1', 'Ana', posicao, false, 'em frente ao RU', new Date())
     const minhaPresenca = vi.fn().mockResolvedValue(ativa)
 
     render(<PainelVendedorPage {...falsos(undefined, undefined, undefined, minhaPresenca)} />)
 
-    expect(await screen.findByRole('status')).toHaveTextContent('Você está visível no mapa.')
-    expect(screen.getByRole('button', { name: 'Desligar' })).toBeEnabled()
-    expect(botao()).toBeDisabled()
+    expect(await screen.findByText('Você está visível no mapa.')).toBeInTheDocument()
+    expect(botao()).toHaveAttribute('aria-checked', 'true')
+    expect(botao()).toBeEnabled()
     expect(screen.getByLabelText('Referência (opcional)')).toHaveValue('em frente ao RU')
   })
 })
@@ -150,7 +187,7 @@ describe('PainelVendedorPage: ponto fixo no mapa (RN14)', () => {
 
     expect(await screen.findByTitle('Ponto escolhido')).toBeInTheDocument()
     fireEvent.click(botao())
-    await screen.findByRole('status')
+    await screen.findByText('Você está visível no mapa.')
     expect(registrar).toHaveBeenCalledWith(
       posicao,
       expect.objectContaining({ latitude: expect.any(Number), longitude: expect.any(Number) }),
@@ -169,7 +206,7 @@ describe('PainelVendedorPage: ponto fixo no mapa (RN14)', () => {
 
     expect(screen.queryByTitle('Ponto escolhido')).not.toBeInTheDocument()
     fireEvent.click(botao())
-    await screen.findByRole('status')
+    await screen.findByText('Você está visível no mapa.')
     expect(registrar).toHaveBeenCalledWith(posicao, null, '')
   })
 })

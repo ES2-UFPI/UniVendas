@@ -159,14 +159,16 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
   })
 
-  it('o menu leva ao painel do vendedor, com o botão "Estou no campus" (US04)', () => {
+  it('o menu leva ao painel do vendedor, com o interruptor "Estou no campus" (US04)', () => {
     abrir('/', anaVendedora)
     expect(screen.getByRole('link', { name: 'Painel' })).toHaveAttribute('href', '/painel')
     cleanup()
 
     abrir('/painel', ana)
-    expect(screen.getByRole('heading', { name: 'Painel do vendedor' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Estou no campus' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Seu ponto de venda no campus' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'Estou no campus' })).toBeInTheDocument()
   })
 
   it('abre o perfil do vendedor pela rota /vendedor/:id (US10)', async () => {
