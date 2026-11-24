@@ -151,7 +151,7 @@ describe('App', () => {
 
   it('abre a tela "Quero vender" com a conta logada', () => {
     abrir('/quero-vender', ana)
-    expect(screen.getByRole('heading', { name: 'Quero vender' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Crie seu perfil de vendedor' })).toBeInTheDocument()
   })
 
   it('protege também o painel do vendedor', () => {

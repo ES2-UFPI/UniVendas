@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Falha } from '../../../core/falha'
 import { VendedorAmbulante } from '../domain/Vendedor'
@@ -29,6 +29,27 @@ describe('QueroVenderPage', () => {
       screen.getByText('Entre na sua conta para criar seu perfil de vendedor.'),
     ).toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('mostra o título e a prévia, que acompanha o que a pessoa digita', () => {
+    render(<QueroVenderPage perfilId="u1" repositorio={repositorioFalso().repositorio} />)
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Crie seu perfil de vendedor' }),
+    ).toBeInTheDocument()
+    const previa = screen.getByRole('complementary', { name: 'Como seu perfil vai aparecer' })
+    expect(within(previa).getByText('Seu nome aqui')).toBeInTheDocument()
+    expect(within(previa).queryByText('WhatsApp')).not.toBeInTheDocument()
+
+    preencher()
+    fireEvent.change(screen.getByLabelText('O que você vende (opcional)'), {
+      target: { value: 'Brownie e café' },
+    })
+
+    expect(within(previa).getByText('Brownies da Ana')).toBeInTheDocument()
+    expect(within(previa).getByText('Brownie e café')).toBeInTheDocument()
+    expect(within(previa).getByText('WhatsApp')).toBeInTheDocument()
+    expect(within(previa).queryByText('Telefone')).not.toBeInTheDocument()
+    expect(within(previa).getByText('Chat')).toBeInTheDocument()
   })
 
   it('mostra os erros de nome e contato e não salva (RN06)', async () => {
@@ -81,8 +102,10 @@ describe('QueroVenderPage', () => {
     preencher()
 
     const arquivo = new File(['original'], 'foto.png', { type: 'image/png' })
-    fireEvent.change(screen.getByLabelText('Escolher foto'), { target: { files: [arquivo] } })
-    expect(await screen.findByText('Trocar foto')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Adicionar foto do perfil'), {
+      target: { files: [arquivo] },
+    })
+    expect(await screen.findByText('Trocar foto do perfil')).toBeInTheDocument()
 
     fireEvent.click(botao())
 
