@@ -82,6 +82,8 @@ function buscarPor(texto: string) {
 describe('BuscaPage', () => {
   it('tem o campo de busca e não fala de acentos nem maiúsculas na tela', async () => {
     abrir()
+    expect(screen.getByRole('heading', { level: 2, name: 'Buscar no campus' })).toBeInTheDocument()
+    expect(screen.getByText('Encontre produtos e quem está vendendo agora.')).toBeInTheDocument()
     expect(screen.getByRole('search')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Busque um produto ou vendedor')).toBeInTheDocument()
     await screen.findByRole('list', { name: 'Itens disponíveis' })

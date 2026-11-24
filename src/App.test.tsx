@@ -244,7 +244,7 @@ describe('App', () => {
     cleanup()
 
     abrir('/busca', ana)
-    expect(screen.getByRole('heading', { name: 'Buscar' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Buscar no campus' })).toBeInTheDocument()
     expect(screen.getByRole('search')).toBeInTheDocument()
   })
 

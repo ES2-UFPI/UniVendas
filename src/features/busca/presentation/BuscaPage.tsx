@@ -1,12 +1,16 @@
 import { useEffect, useLayoutEffect, useRef, type FormEvent, type KeyboardEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { rotaItem } from '../../../core/routes'
+import { Aviso } from '../../../core/ui/Aviso'
+import { estiloEntrada } from '../../../core/ui/CampoFormulario'
+import { FotoOuInicial } from '../../../core/ui/FotoOuInicial'
+import { Icone } from '../../../core/ui/Icone'
+import { TituloTela } from '../../../core/ui/TituloTela'
 import type { Categoria } from '../../itens/domain/Categoria'
 import type { Atalho } from '../domain/atalhos'
 import type { BuscaRepository } from '../domain/BuscaRepository'
 import type { FonteCategorias } from '../domain/navegacaoCategorias'
 import { CartaoResultado } from './CartaoResultado'
-import { FotoOuInicial } from './FotoOuInicial'
 import { rolagemDaBusca } from './memoriaDaBusca'
 import { useBuscaViewModel } from './useBuscaViewModel'
 
@@ -17,27 +21,11 @@ interface BuscaPageProps {
   categoriasRepositorio?: FonteCategorias
 }
 
-/** Ícone de traço, 24x24, só decorativo. */
-function Icone({ d, className = 'h-5 w-5' }: { d: string; className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className={`shrink-0 ${className}`}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d={d} />
-    </svg>
-  )
-}
+/** Título de cada parte da tela (Archivo, menor que o da tela). */
+const ESTILO_SUBTITULO = 'font-titulo text-xl tracking-[-0.035em] text-tinta md:text-2xl'
 
-const LUPA = 'M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16Zm10 18-4.3-4.3'
-const SETA_DIAGONAL = 'M7 17 17 7M7 7h10v10'
-const CHECK = 'm5 12 5 5L20 7'
+/** O campo de busca do tema, cinza claro e com espaço para a lupa. */
+const ESTILO_CAMPO_BUSCA = `${estiloEntrada.replace('bg-white', 'bg-campo')} pl-12`
 
 interface AbasProps {
   abas: Categoria[]
@@ -65,7 +53,7 @@ function AbasDaBusca({ abas, atual, aoTrocar }: AbasProps) {
     <div
       role="tablist"
       aria-label="Tipo de produto"
-      className="mt-6 flex gap-8 border-b border-linha"
+      className="mt-7 flex gap-8 border-b border-linha"
     >
       {abas.map((aba, indice) => {
         const escolhida = aba.id === atual?.id
@@ -108,7 +96,7 @@ function AtalhosDaBusca({ atalhos, escolhido, aoEscolher }: AtalhosProps) {
   return (
     <section aria-labelledby="titulo-atalhos" className="mt-8">
       <div className="flex items-baseline justify-between gap-3">
-        <h3 id="titulo-atalhos" className="text-xl font-bold tracking-tight text-tinta">
+        <h3 id="titulo-atalhos" className={ESTILO_SUBTITULO}>
           Para descobrir no campus
         </h3>
         <span className="hidden text-sm text-tinta-suave sm:inline">
@@ -124,7 +112,7 @@ function AtalhosDaBusca({ atalhos, escolhido, aoEscolher }: AtalhosProps) {
                 type="button"
                 aria-pressed={ativo}
                 onClick={() => aoEscolher(categoria.id)}
-                className={`flex w-full flex-col overflow-hidden rounded-2xl border bg-cartao text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marca-600 ${
+                className={`flex w-full flex-col overflow-hidden rounded-cartao border bg-cartao text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marca-600 ${
                   ativo
                     ? 'border-marca-600 ring-2 ring-marca-600'
                     : 'border-linha hover:border-borda'
@@ -133,14 +121,14 @@ function AtalhosDaBusca({ atalhos, escolhido, aoEscolher }: AtalhosProps) {
                 <FotoOuInicial
                   url={fotoUrl}
                   nome={categoria.nome}
-                  className="aspect-[232/202] w-full"
+                  className="aspect-[232/202] w-full text-3xl"
                 />
                 <span className="flex items-center justify-between gap-2 px-3 py-3.5 sm:px-4">
                   <span className="truncate text-[15px] font-semibold text-tinta">
                     {categoria.nome}
                   </span>
                   <span className="text-marca-600">
-                    <Icone d={ativo ? CHECK : SETA_DIAGONAL} className="h-4 w-4" />
+                    <Icone nome={ativo ? 'check' : 'setaDiagonal'} className="h-4 w-4" />
                   </span>
                 </span>
               </button>
@@ -193,16 +181,16 @@ export function BuscaPage({ repositorio, categoriasRepositorio }: BuscaPageProps
       : 'Disponíveis agora'
 
   return (
-    <section className="w-full max-w-[976px] pt-1">
-      <h2 className="sr-only">Buscar</h2>
+    <section className="flex w-full flex-col">
+      <TituloTela titulo="Buscar no campus" apoio="Encontre produtos e quem está vendendo agora." />
 
-      <form role="search" onSubmit={enviar}>
+      <form role="search" onSubmit={enviar} className="mt-7">
         <label htmlFor="busca" className="sr-only">
           Busque um produto ou vendedor
         </label>
         <div className="relative">
           <span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-marca-600">
-            <Icone d={LUPA} />
+            <Icone nome="lupa" />
           </span>
           <input
             id="busca"
@@ -212,15 +200,15 @@ export function BuscaPage({ repositorio, categoriasRepositorio }: BuscaPageProps
             value={vm.texto}
             onChange={(e) => vm.alterarTexto(e.target.value)}
             placeholder="Busque um produto ou vendedor"
-            className="h-[54px] w-full rounded-xl border border-[#e2e8e2] bg-campo pr-4 pl-12 text-base text-tinta placeholder:text-[#6d7c72] focus:border-marca-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-marca-600/30"
+            className={ESTILO_CAMPO_BUSCA}
           />
         </div>
       </form>
 
       {vm.erroCategorias && (
-        <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-800">
+        <Aviso tipo="erro" className="mt-4">
           {vm.erroCategorias}
-        </p>
+        </Aviso>
       )}
 
       {vm.abas.length > 0 && (
@@ -234,9 +222,9 @@ export function BuscaPage({ repositorio, categoriasRepositorio }: BuscaPageProps
         aria-busy={vm.carregando}
       >
         {vm.erro && (
-          <p role="alert" className="mt-6 rounded-xl bg-red-50 p-3 text-sm text-red-800">
+          <Aviso tipo="erro" className="mt-6">
             {vm.erro}
-          </p>
+          </Aviso>
         )}
 
         {vm.atalhos.length > 0 && (
@@ -264,7 +252,7 @@ export function BuscaPage({ repositorio, categoriasRepositorio }: BuscaPageProps
         {vm.disponiveis.length > 0 && (
           <section aria-labelledby="titulo-disponiveis" className="mt-10">
             <div className="flex items-baseline justify-between gap-3">
-              <h3 id="titulo-disponiveis" className="text-xl font-bold tracking-tight text-tinta">
+              <h3 id="titulo-disponiveis" className={ESTILO_SUBTITULO}>
                 {tituloLista}
               </h3>
               {vm.atalhoAtual && (
@@ -279,14 +267,14 @@ export function BuscaPage({ repositorio, categoriasRepositorio }: BuscaPageProps
             </div>
             <ul
               aria-label="Itens disponíveis"
-              className="mt-2 grid grid-cols-1 lg:grid-cols-2 lg:gap-x-7"
+              className="mt-2 grid grid-cols-1 lg:grid-cols-2 lg:gap-x-10"
             >
               {vm.disponiveis.map((r) => (
                 <li key={r.item.id}>
                   <Link
                     to={rotaItem(r.item.id)}
                     state={{ daBusca: true, resultado: r }}
-                    className="block rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marca-600"
+                    className="block rounded-cartao focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marca-600"
                   >
                     <CartaoResultado resultado={r} />
                   </Link>
@@ -298,19 +286,19 @@ export function BuscaPage({ repositorio, categoriasRepositorio }: BuscaPageProps
 
         {vm.esgotados.length > 0 && (
           <section aria-labelledby="titulo-esgotados" className="mt-10">
-            <h3 id="titulo-esgotados" className="text-lg font-bold tracking-tight text-tinta">
+            <h3 id="titulo-esgotados" className={ESTILO_SUBTITULO}>
               Esgotados
             </h3>
             <ul
               aria-label="Itens esgotados"
-              className="mt-2 grid grid-cols-1 lg:grid-cols-2 lg:gap-x-7"
+              className="mt-2 grid grid-cols-1 lg:grid-cols-2 lg:gap-x-10"
             >
               {vm.esgotados.map((r) => (
                 <li key={r.item.id}>
                   <Link
                     to={rotaItem(r.item.id)}
                     state={{ daBusca: true, resultado: r }}
-                    className="block rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marca-600"
+                    className="block rounded-cartao focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marca-600"
                   >
                     <CartaoResultado resultado={r} />
                   </Link>
